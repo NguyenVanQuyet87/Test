@@ -44,14 +44,14 @@
     function (gltf) {
       const model = gltf.scene;
       model.scale.set(0.2, 0.2, 0.2);  // thu nhỏ mô hình
-      model.position.set(0, 0, -0.5);  // đặt cách camera 0.5m phía trước
+      model.position.set(0, 0, -2);  // đặt cách camera 0.5m phía trước
       scene.add(model);
 
       // Nếu muốn xoay model
-      //renderer.setAnimationLoop(() => {
-        //model.rotation.y += 0.01;
-        //renderer.render(scene, camera);
-      //});
+      renderer.setAnimationLoop(() => {
+        model.rotation.y += 0.01;
+        renderer.render(scene, camera);
+      });
     },
     undefined,
     function (error) {
