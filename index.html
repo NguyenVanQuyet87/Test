@@ -37,8 +37,7 @@
   // Load GLTF
   const loader = new GLTFLoader();
   loader.load(
-    // 👉 thay đường dẫn file ở đây (phải để trong repo hoặc cùng thư mục với file .html)
-    "model.gltf",  
+    "test.glb",  
     function (gltf) {
       const model = gltf.scene;
       model.scale.set(0.2, 0.2, 0.2);  // thu nhỏ mô hình
