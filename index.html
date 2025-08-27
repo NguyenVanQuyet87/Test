@@ -10,10 +10,13 @@
 </head>
 <body>
 <script type="module">
-  import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js";
-  import { ARButton } from "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/webxr/ARButton.js";
-  import { GLTFLoader } from "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/loaders/GLTFLoader.js";
-
+  //import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js";
+  //import { ARButton } from "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/webxr/ARButton.js?module";
+  //import { GLTFLoader } from "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/loaders/GLTFLoader.js?module";
+  import * as THREE from "https://esm.sh/three@0.160.0";
+import { GLTFLoader } from "https://esm.sh/three@0.160.0/examples/jsm/loaders/GLTFLoader.js";
+import { ARButton } from "https://esm.sh/three@0.160.0/examples/jsm/webxr/ARButton.js";
+  
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.01, 20);
 
@@ -29,14 +32,14 @@
       domOverlay: { root: document.body }
     })
   );
-
+  
   // Ánh sáng
   const light = new THREE.HemisphereLight(0xffffff, 0xbbbbff, 1);
   scene.add(light);
 
-  // Load GLTF
-  const loader = new GLTFLoader();
+    const loader = new GLTFLoader();
   loader.load(
+    // 👉 thay đường dẫn file ở đây (phải để trong repo hoặc cùng thư mục với file .html)
     "test.glb",  
     function (gltf) {
       const model = gltf.scene;
@@ -55,7 +58,7 @@
       console.error("Error loading GLTF:", error);
     }
   );
-
+  
   window.addEventListener("resize", () => {
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
