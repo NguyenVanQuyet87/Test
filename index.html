@@ -40,28 +40,6 @@
   const light = new THREE.HemisphereLight(0xffffff, 0xbbbbff, 1);
   scene.add(light);
 
-  // Load GLTF
-  const loader = new GLTFLoader();
-  loader.load(
-    "test.glb",  
-    function (gltf) {
-      const model = gltf.scene;
-      model.scale.set(0.2, 0.2, 0.2);  // thu nhỏ mô hình
-      model.position.set(0, 0, -0.5);  // đặt cách camera 0.5m phía trước
-      scene.add(model);
-
-      // Nếu muốn xoay model
-      renderer.setAnimationLoop(() => {
-        model.rotation.y += 0.01;
-        renderer.render(scene, camera);
-      });
-    },
-    undefined,
-    function (error) {
-      console.error("Error loading GLTF:", error);
-    }
-  );
-
   window.addEventListener("resize", () => {
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
