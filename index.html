@@ -51,7 +51,7 @@
   const loader = new GLTFLoader();
   loader.load("test.glb", (gltf) => {
     model = gltf.scene;
-    model.scale.set(0.2, 0.2, 0.2);
+    model.scale.set(1, 1, 1);
     model.visible = false; // ẩn đi cho tới khi đặt
     scene.add(model);
   });
