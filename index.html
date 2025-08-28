@@ -52,7 +52,17 @@
   loader.load("test.glb", (gltf) => {
     model = gltf.scene;
     model.scale.set(1, 1, 1);
-    model.visible = false; // ẩn đi cho tới khi đặt
+    // model.visible = false; // ẩn đi cho tới khi đặt
+    // Tọa độ mong muốn trong hệ tàu
+    const shipCoord = { x: 2, y: 2, z: -10 };
+    
+    // Chuyển sang hệ XR (WebXR)
+    const xrX = -shipCoord.y;   // y tàu -> -x webxr
+    const xrY =  shipCoord.z;   // z tàu ->  y webxr
+    const xrZ = -shipCoord.x;   // x tàu -> -z webxr
+    
+    // Đặt vị trí mô hình trong không gian AR
+    model.position.set(xrX, xrY, xrZ);
     scene.add(model);
   });
 
@@ -60,7 +70,7 @@
   window.addEventListener("click", () => {
     if (reticle.visible && model) {
       model.position.setFromMatrixPosition(reticle.matrix);
-      model.visible = true;
+      //model.visible = true;
     }
   });
 
