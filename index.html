@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <title>WebXR AR with GLTF</title>
+  <title>WebXR AR with Hit-test</title>
   <style>
     body { margin: 0; overflow: hidden; }
     canvas { display: block; }
@@ -10,13 +10,15 @@
 </head>
 <body>
 <script type="module">
-  //import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js";
-  //import { ARButton } from "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/webxr/ARButton.js?module";
-  //import { GLTFLoader } from "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/loaders/GLTFLoader.js?module";
   import * as THREE from "https://esm.sh/three@0.160.0";
   import { GLTFLoader } from "https://esm.sh/three@0.160.0/examples/jsm/loaders/GLTFLoader.js";
   import { ARButton } from "https://esm.sh/three@0.160.0/examples/jsm/webxr/ARButton.js";
-  
+
+  let model = null;
+  let hitTestSource = null;
+  let hitTestSourceRequested = false;
+  let reticle; // vòng tròn định vị
+
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.01, 20);
 
@@ -32,39 +34,75 @@
       domOverlay: { root: document.body }
     })
   );
-  
+
   // Ánh sáng
   const light = new THREE.HemisphereLight(0xffffff, 0xbbbbff, 1);
   scene.add(light);
 
-    const loader = new GLTFLoader();
-  loader.load(
-    // 👉 thay đường dẫn file ở đây (phải để trong repo hoặc cùng thư mục với file .html)
-    "test.glb",  
-    function (gltf) {
-      const model = gltf.scene;
-      model.scale.set(0.2, 0.2, 0.2);  // thu nhỏ mô hình
-      model.position.set(0, 0, -2);  // đặt cách camera 0.5m phía trước
-      scene.add(model);
+  // Reticle (vòng tròn để chỉ vị trí đặt mô hình)
+  const ringGeo = new THREE.RingGeometry(0.08, 0.1, 32).rotateX(-Math.PI / 2);
+  const ringMat = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
+  reticle = new THREE.Mesh(ringGeo, ringMat);
+  reticle.matrixAutoUpdate = false;
+  reticle.visible = false;
+  scene.add(reticle);
 
-      // Nếu muốn xoay model
-      renderer.setAnimationLoop(() => {
-        //model.rotation.y += 0.01;
-        renderer.render(scene, camera);
-      });
-    },
-    undefined,
-    function (error) {
-      console.error("Error loading GLTF:", error);
+  // Load mô hình
+  const loader = new GLTFLoader();
+  loader.load("test.glb", (gltf) => {
+    model = gltf.scene;
+    model.scale.set(0.2, 0.2, 0.2);
+    model.visible = false; // ẩn đi cho tới khi đặt
+    scene.add(model);
+  });
+
+  // Bắt sự kiện click để đặt mô hình
+  window.addEventListener("click", () => {
+    if (reticle.visible && model) {
+      model.position.setFromMatrixPosition(reticle.matrix);
+      model.visible = true;
     }
-  );
-  
+  });
+
+  // Vòng lặp render
+  renderer.setAnimationLoop((timestamp, frame) => {
+    if (frame) {
+      const referenceSpace = renderer.xr.getReferenceSpace();
+      const session = renderer.xr.getSession();
+
+      if (!hitTestSourceRequested) {
+        session.requestReferenceSpace("viewer").then((refSpace) => {
+          session.requestHitTestSource({ space: refSpace }).then((source) => {
+            hitTestSource = source;
+          });
+        });
+        hitTestSourceRequested = true;
+      }
+
+      if (hitTestSource) {
+        const hitTestResults = frame.getHitTestResults(hitTestSource);
+
+        if (hitTestResults.length > 0) {
+          const hit = hitTestResults[0];
+          const pose = hit.getPose(referenceSpace);
+
+          reticle.visible = true;
+          reticle.matrix.fromArray(pose.transform.matrix);
+        } else {
+          reticle.visible = false;
+        }
+      }
+    }
+
+    renderer.render(scene, camera);
+  });
+
+  // Resize
   window.addEventListener("resize", () => {
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
     renderer.setSize(window.innerWidth, window.innerHeight);
   });
-
 </script>
 </body>
 </html>
