@@ -54,7 +54,7 @@
     model.scale.set(1, 1, 1);
     // model.visible = false; // ẩn đi cho tới khi đặt
     // Tọa độ mong muốn trong hệ tàu
-    const shipCoord = { x: 2, y: 2, z: -10 };
+    const shipCoord = { x: 10, y: 2, z: 2 };
     
     // Chuyển sang hệ XR (WebXR)
     const xrX = -shipCoord.y;   // y tàu -> -x webxr
@@ -78,32 +78,18 @@
   renderer.setAnimationLoop((timestamp, frame) => {
     if (frame) {
       const referenceSpace = renderer.xr.getReferenceSpace();
-      const session = renderer.xr.getSession();
-
-      if (!hitTestSourceRequested) {
-        session.requestReferenceSpace("viewer").then((refSpace) => {
-          session.requestHitTestSource({ space: refSpace }).then((source) => {
-            hitTestSource = source;
-          });
-        });
-        hitTestSourceRequested = true;
-      }
-
-      if (hitTestSource) {
-        const hitTestResults = frame.getHitTestResults(hitTestSource);
-
-        if (hitTestResults.length > 0) {
-          const hit = hitTestResults[0];
-          const pose = hit.getPose(referenceSpace);
-
-          reticle.visible = true;
-          reticle.matrix.fromArray(pose.transform.matrix);
-        } else {
-          reticle.visible = false;
-        }
+      const hitTestResults = frame.getHitTestResults(hitTestSource);
+  
+      if (hitTestResults.length > 0) {
+        const hit = hitTestResults[0];
+        const pose = hit.getPose(referenceSpace);
+  
+        reticle.visible = true;
+        reticle.matrix.fromArray(pose.transform.matrix);
+      } else {
+        reticle.visible = false;
       }
     }
-
     renderer.render(scene, camera);
   });
 
