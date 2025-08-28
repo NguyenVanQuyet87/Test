@@ -14,8 +14,8 @@
   //import { ARButton } from "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/webxr/ARButton.js?module";
   //import { GLTFLoader } from "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/loaders/GLTFLoader.js?module";
   import * as THREE from "https://esm.sh/three@0.160.0";
-import { GLTFLoader } from "https://esm.sh/three@0.160.0/examples/jsm/loaders/GLTFLoader.js";
-import { ARButton } from "https://esm.sh/three@0.160.0/examples/jsm/webxr/ARButton.js";
+  import { GLTFLoader } from "https://esm.sh/three@0.160.0/examples/jsm/loaders/GLTFLoader.js";
+  import { ARButton } from "https://esm.sh/three@0.160.0/examples/jsm/webxr/ARButton.js";
   
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.01, 20);
@@ -44,12 +44,12 @@ import { ARButton } from "https://esm.sh/three@0.160.0/examples/jsm/webxr/ARButt
     function (gltf) {
       const model = gltf.scene;
       model.scale.set(0.2, 0.2, 0.2);  // thu nhỏ mô hình
-      model.position.set(0, 0, -0.5);  // đặt cách camera 0.5m phía trước
+      model.position.set(0, 0, -2);  // đặt cách camera 0.5m phía trước
       scene.add(model);
 
       // Nếu muốn xoay model
       renderer.setAnimationLoop(() => {
-        model.rotation.y += 0.01;
+        //model.rotation.y += 0.01;
         renderer.render(scene, camera);
       });
     },
