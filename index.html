@@ -130,70 +130,64 @@ function getCameraHorizontalDir() {
       return;
     }
 
-// remove old anchor/model (luôn xóa trước khi tạo mới)
-if (currentAnchor) {
-  if (currentAnchor.group && currentAnchor.group.parent) {
-    currentAnchor.group.parent.remove(currentAnchor.group);
-  }
-  try {
-    if (currentAnchor.anchor && currentAnchor.anchor.delete) {
-      currentAnchor.anchor.delete();
+    // remove old anchor/model (luôn xóa trước khi tạo mới)
+    if (currentAnchor) {
+      if (currentAnchor.group && currentAnchor.group.parent) {
+        currentAnchor.group.parent.remove(currentAnchor.group);
+      }
+      try {
+        if (currentAnchor.anchor && currentAnchor.anchor.delete) {
+          currentAnchor.anchor.delete();
+        }
+      } catch (e) { /* ignore */ }
+      currentAnchor = null;
+      currentModel = null;
     }
-  } catch (e) { /* ignore */ }
-  currentAnchor = null;
-  currentModel = null;
-}
 
-try {
-  const anchor = await hit.createAnchor(referenceSpace);
-  const anchorGroup = new THREE.Group();
-  anchorGroup.matrixAutoUpdate = false;
-
-  const pose = hit.getPose(referenceSpace);
-  if (pose) {
-    anchorGroup.matrix.fromArray(pose.transform.matrix);
-  }
-
-  scene.add(anchorGroup);
-
-  const placed = cloneModel(modelTemplate);
-  placed.position.set(0, 0, 0);
-  placed.rotation.set(0, 0, 0);
-  placed.scale.copy(modelTemplate.scale);
-
-  anchorGroup.add(placed);
-  currentAnchor = { anchor, group: anchorGroup };
-  currentModel = placed;
-
-  console.log("Anchor created successfully:", anchor);
-  infoEl.textContent = "Anchor created.";
-  return;
-
-} catch (err) {
-  console.warn("createAnchor failed, using fallback.", err);
-  infoEl.textContent = "Anchors not available — fallback mode.";
-}
-
-// --- Fallback ---
-const fallbackGroup = new THREE.Group();
-fallbackGroup.matrixAutoUpdate = false;
-fallbackGroup.matrix.copy(reticle.matrix);
-scene.add(fallbackGroup);
-
-const placed = cloneModel(modelTemplate);
-placed.position.set(0, 0, 0);
-placed.rotation.set(0, 0, 0);
-placed.scale.copy(modelTemplate.scale);
-
-fallbackGroup.add(placed);
-currentAnchor = { anchor: null, group: fallbackGroup, fallback: true };
-currentModel = placed;
-
-console.log("Placed model as fallback (no anchor).");
-
+    try {
+      const anchor = await hit.createAnchor(referenceSpace);
+      const anchorGroup = new THREE.Group();
+      anchorGroup.matrixAutoUpdate = false;
+    
+      const pose = hit.getPose(referenceSpace);
+      if (pose) {
+        anchorGroup.matrix.fromArray(pose.transform.matrix);
+      }
+    
+      scene.add(anchorGroup);
+    
+      const placed = cloneModel(modelTemplate);
+      placed.position.set(0, 0, 0);
+      placed.rotation.set(0, 0, 0);
+      placed.scale.copy(modelTemplate.scale);
+    
+      anchorGroup.add(placed);
+      currentAnchor = { anchor, group: anchorGroup };
+      currentModel = placed;
+    
+      console.log("Anchor created successfully:", anchor);
+      infoEl.textContent = "Anchor created.";
+      return;
+    
     } catch (err) {
-      console.error("Fallback placement failed:", err);
+      console.warn("createAnchor failed, using fallback.", err);
+      infoEl.textContent = "Anchors not available — fallback mode.";
     }
+    
+    // --- Fallback ---
+    const fallbackGroup = new THREE.Group();
+    fallbackGroup.matrixAutoUpdate = false;
+    fallbackGroup.matrix.copy(reticle.matrix);
+    scene.add(fallbackGroup);
+    
+    const placed = cloneModel(modelTemplate);
+    placed.position.set(0, 0, 0);
+    placed.rotation.set(0, 0, 0);
+    placed.scale.copy(modelTemplate.scale);
+    fallbackGroup.add(placed);
+    currentAnchor = { anchor: null, group: fallbackGroup, fallback: true };
+    currentModel = placed;
+    console.log("Placed model as fallback (no anchor).");
   }
 
   // Controller select (AR input)
