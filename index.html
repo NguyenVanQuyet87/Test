@@ -6,20 +6,29 @@
   <style>
     body { margin: 0; overflow: hidden; }
     canvas { display: block; }
+    #opacityControl {
+      position: absolute;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 10;
+    }
   </style>
 </head>
 <body>
+<input type="range" id="opacityControl" min="0" max="1" step="0.05" value="1">
 <script type="module">
 import * as THREE from "https://esm.sh/three@0.160.0";
 import { GLTFLoader } from "https://esm.sh/three@0.160.0/examples/jsm/loaders/GLTFLoader.js";
 import { ARButton } from "https://esm.sh/three@0.160.0/examples/jsm/webxr/ARButton.js";
 
-let modelTemplate = null;         
+let modelTemplate = null;
+let currentAnchor = null;     // chỉ giữ một anchor
 let reticle;
 let hitTestSource = null;
 let hitTestSourceRequested = false;
 let lastHitResult = null;
-const anchors = [];               
+let currentModel = null;      // tham chiếu đến mô hình hiện tại
 
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.01, 20);
@@ -35,8 +44,7 @@ document.body.appendChild(
 );
 
 // Light
-const light = new THREE.HemisphereLight(0xffffff, 0xbbbbff, 1);
-scene.add(light);
+scene.add(new THREE.HemisphereLight(0xffffff, 0xbbbbff, 1));
 
 // Reticle
 const ringGeo = new THREE.RingGeometry(0.08, 0.1, 32).rotateX(-Math.PI / 2);
@@ -46,29 +54,36 @@ reticle.matrixAutoUpdate = false;
 reticle.visible = false;
 scene.add(reticle);
 
-// Load GLB model (template)
+// Load GLB model
 const loader = new GLTFLoader();
 loader.load("test.glb", (gltf) => {
   modelTemplate = gltf.scene;
   modelTemplate.scale.set(0.2, 0.2, 0.2);
-}, undefined, (err) => {
-  console.error("GLTF load error:", err);
-});
+}, undefined, (err) => console.error("GLTF load error:", err));
 
 // helper: clone model
 function cloneModel(template) {
   const clone = template.clone(true);
   clone.traverse((node) => {
     if (node.isMesh) {
-      node.castShadow = node.receiveShadow = false;
+      node.material = node.material.clone();
+      node.material.transparent = true;
     }
   });
   return clone;
 }
 
-// đặt model + anchor
+// đặt model + anchor (chỉ một)
 async function placeAnchorFromLastHit() {
   if (!lastHitResult || !modelTemplate) return;
+
+  // xóa anchor cũ
+  if (currentAnchor) {
+    scene.remove(currentAnchor.group);
+    currentAnchor.anchor.delete();
+    currentAnchor = null;
+    currentModel = null;
+  }
 
   try {
     const anchor = await lastHitResult.createAnchor();
@@ -79,7 +94,9 @@ async function placeAnchorFromLastHit() {
     const placed = cloneModel(modelTemplate);
     anchorGroup.add(placed);
 
-    anchors.push({ anchor, group: anchorGroup });
+    currentAnchor = { anchor, group: anchorGroup };
+    currentModel = placed;
+
     console.log("Anchor created:", anchor);
   } catch (err) {
     console.error("createAnchor failed:", err);
@@ -103,13 +120,25 @@ window.addEventListener('click', () => {
   }
 });
 
+// input range: thay đổi opacity
+const opacitySlider = document.getElementById("opacityControl");
+opacitySlider.addEventListener("input", (e) => {
+  const value = parseFloat(e.target.value);
+  if (currentModel) {
+    currentModel.traverse((node) => {
+      if (node.isMesh && node.material) {
+        node.material.opacity = value;
+      }
+    });
+  }
+});
+
 // render loop
 renderer.setAnimationLoop((timestamp, frame) => {
   if (frame) {
     const referenceSpace = renderer.xr.getReferenceSpace();
     const session = renderer.xr.getSession();
 
-    // request hit test source
     if (!hitTestSourceRequested) {
       session.requestReferenceSpace("viewer").then((viewerSpace) => {
         session.requestHitTestSource({ space: viewerSpace }).then((source) => {
@@ -124,7 +153,6 @@ renderer.setAnimationLoop((timestamp, frame) => {
       hitTestSourceRequested = true;
     }
 
-    // update reticle
     if (hitTestSource) {
       const hitTestResults = frame.getHitTestResults(hitTestSource);
       if (hitTestResults.length > 0) {
@@ -141,11 +169,10 @@ renderer.setAnimationLoop((timestamp, frame) => {
       }
     }
 
-    // update anchors
-    for (const entry of anchors) {
-      const anchorPose = frame.getPose(entry.anchor.anchorSpace, referenceSpace);
+    if (currentAnchor) {
+      const anchorPose = frame.getPose(currentAnchor.anchor.anchorSpace, referenceSpace);
       if (anchorPose) {
-        entry.group.matrix.fromArray(anchorPose.transform.matrix);
+        currentAnchor.group.matrix.fromArray(anchorPose.transform.matrix);
       }
     }
   }
