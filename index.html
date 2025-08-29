@@ -78,38 +78,60 @@ function cloneModel(template) {
 }
 
 // đặt model + anchor (chỉ một)
-async function placeAnchorFromLastHit(hit, referenceSpace) {
-  if (!hit || !modelTemplate) return;
+
+async function placeAnchorFromLastHit() {
+  const hit = lastHitResult;
+  const referenceSpace = renderer.xr.getReferenceSpace();
+
+  if (!hit) {
+    console.warn("No hit to create anchor from (lastHitResult is null).");
+    return;
+  }
+  if (!referenceSpace) {
+    console.warn("No referenceSpace available.");
+    return;
+  }
+  if (!modelTemplate) {
+    console.warn("Model not loaded yet.");
+    return;
+  }
 
   // dọn anchor cũ
   if (currentAnchor) {
     if (currentAnchor.group.parent) currentAnchor.group.parent.remove(currentAnchor.group);
-    try { currentAnchor.anchor.delete(); } catch {}
+    try { currentAnchor.anchor.delete(); } catch (e) { /* một số impl không hỗ trợ delete() */ }
     currentAnchor = null;
     currentModel = null;
   }
 
   try {
-    const anchor = await hit.createAnchor();
+    const anchor = await hit.createAnchor(); // tạo anchor từ lastHitResult
     const anchorGroup = new THREE.Group();
     anchorGroup.matrixAutoUpdate = false;
     scene.add(anchorGroup);
 
     const placed = cloneModel(modelTemplate);
+    // đảm bảo transform local sạch
+    placed.position.set(0, 0, 0);
+    placed.rotation.set(0, 0, 0);
+    // nếu modelTemplate có scale, clone thường giữ, nhưng an toàn thì copy:
+    placed.scale.copy(modelTemplate.scale || new THREE.Vector3(1,1,1));
+
     anchorGroup.add(placed);
 
     currentAnchor = { anchor, group: anchorGroup };
     currentModel = placed;
 
-    // căn hướng: trục X → camera
+    // căn hướng để trục X của mô hình hướng về camera (giống ý bạn viết trước)
     const pose = hit.getPose(referenceSpace);
     if (pose) {
-      const position = new THREE.Vector3().setFromMatrixPosition(new THREE.Matrix4().fromArray(pose.transform.matrix));
+      const m = new THREE.Matrix4().fromArray(pose.transform.matrix);
+      const position = new THREE.Vector3().setFromMatrixPosition(m);
       const camPos = new THREE.Vector3();
       camera.getWorldPosition(camPos);
 
-      const dir = new THREE.Vector3().subVectors(camPos, position).normalize(); // vector từ model → camera
-      const q = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(1,0,0), dir);
+      const dir = new THREE.Vector3().subVectors(camPos, position).normalize(); // model -> camera
+      const q = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(1, 0, 0), dir);
       placed.quaternion.copy(q);
     }
 
