@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <title>WebXR AR with Anchor</title>
+  <title>WebXR AR with Hit-test + Anchors</title>
   <style>
     body { margin: 0; overflow: hidden; }
     canvas { display: block; }
@@ -10,127 +10,148 @@
 </head>
 <body>
 <script type="module">
-  import * as THREE from "https://esm.sh/three@0.160.0";
-  import { GLTFLoader } from "https://esm.sh/three@0.160.0/examples/jsm/loaders/GLTFLoader.js";
-  import { ARButton } from "https://esm.sh/three@0.160.0/examples/jsm/webxr/ARButton.js";
+import * as THREE from "https://esm.sh/three@0.160.0";
+import { GLTFLoader } from "https://esm.sh/three@0.160.0/examples/jsm/loaders/GLTFLoader.js";
+import { ARButton } from "https://esm.sh/three@0.160.0/examples/jsm/webxr/ARButton.js";
 
-  let model = null;
-  let reticle;
-  let hitTestSource = null;
-  let hitTestSourceRequested = false;
+let model = null;
+let reticle;
+let hitTestSource = null;
+let hitTestSourceRequested = false;
+let anchors = []; // danh sách anchor đã tạo
 
-  const scene = new THREE.Scene();
-  const camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.01, 20);
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.01, 20);
 
-  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-  renderer.setSize(window.innerWidth, window.innerHeight);
-  renderer.xr.enabled = true;
-  document.body.appendChild(renderer.domElement);
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.xr.enabled = true;
+document.body.appendChild(renderer.domElement);
 
-  document.body.appendChild(
-    ARButton.createButton(renderer, {
-      requiredFeatures: ["hit-test", "anchors"] // thêm "anchors"
-    })
-  );
+document.body.appendChild(
+  ARButton.createButton(renderer, {
+    requiredFeatures: ["hit-test", "anchors"]
+  })
+);
 
-  // Ánh sáng
-  const light = new THREE.HemisphereLight(0xffffff, 0xbbbbff, 1);
-  scene.add(light);
+// Ánh sáng
+const light = new THREE.HemisphereLight(0xffffff, 0xbbbbff, 1);
+scene.add(light);
 
-  // Reticle
-  const ringGeo = new THREE.RingGeometry(0.08, 0.1, 32).rotateX(-Math.PI / 2);
-  const ringMat = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
-  reticle = new THREE.Mesh(ringGeo, ringMat);
-  reticle.matrixAutoUpdate = false;
-  reticle.visible = false;
-  scene.add(reticle);
+// Reticle
+const ringGeo = new THREE.RingGeometry(0.08, 0.1, 32).rotateX(-Math.PI / 2);
+const ringMat = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
+reticle = new THREE.Mesh(ringGeo, ringMat);
+reticle.matrixAutoUpdate = false;
+reticle.visible = false;
+scene.add(reticle);
 
-  // Load mô hình
-  const loader = new GLTFLoader();
-  loader.load("test.glb", (gltf) => {
-    model = gltf.scene;
-    model.scale.set(0.2, 0.2, 0.2);
-    model.visible = false;
-  });
+// Load mô hình
+const loader = new GLTFLoader();
+loader.load("test.glb", (gltf) => {
+  model = gltf.scene;
+  model.scale.set(0.2, 0.2, 0.2);
+  model.visible = false; // chỉ hiện khi đặt
+  scene.add(model);
+});
 
-  // Click để tạo Anchor
-  window.addEventListener("click", async () => {
-    if (!reticle.visible || !model) return;
-
+// Click để neo mô hình
+window.addEventListener("click", () => {
+  if (reticle.visible && model) {
     const session = renderer.xr.getSession();
     const frame = renderer.xr.getFrame();
 
-    if (!frame) return;
-
-    // Tạo anchor từ reticle
-    const referenceSpace = renderer.xr.getReferenceSpace();
-    const pose = new XRRigidTransform();
-    const anchor = await frame.createAnchor(new XRRigidTransform(), referenceSpace);
-
-    // Gắn mô hình vào anchor
-    model.visible = true;
-    scene.add(model);
-
-    // cập nhật transform mô hình theo anchor trong mỗi frame
-    anchor.context = { object: model };
-    session.addEventListener("frame", (event) => {
-      const anchorPose = frame.getPose(anchor.anchorSpace, referenceSpace);
-      if (anchorPose) {
-        anchor.context.object.matrix.fromArray(anchorPose.transform.matrix);
-        anchor.context.object.matrix.decompose(
-          anchor.context.object.position,
-          anchor.context.object.quaternion,
-          anchor.context.object.scale
-        );
-      }
-    });
-  });
-
-  // Vòng lặp render
-  renderer.setAnimationLoop((timestamp, frame) => {
     if (frame) {
       const referenceSpace = renderer.xr.getReferenceSpace();
-      const session = renderer.xr.getSession();
+      const hitPose = new XRRigidTransform();
+      hitPose.matrix = reticle.matrix.elements;
 
-      if (!hitTestSourceRequested) {
-        session.requestReferenceSpace("viewer").then((space) => {
-          session.requestHitTestSource({ space }).then((source) => {
-            hitTestSource = source;
-          });
-        });
-
-        session.addEventListener("end", () => {
-          hitTestSourceRequested = false;
-          hitTestSource = null;
-        });
-
-        hitTestSourceRequested = true;
-      }
-
-      if (hitTestSource) {
-        const hitTestResults = frame.getHitTestResults(hitTestSource);
-
-        if (hitTestResults.length > 0) {
-          const hit = hitTestResults[0];
-          const pose = hit.getPose(referenceSpace);
-
-          reticle.visible = true;
-          reticle.matrix.fromArray(pose.transform.matrix);
-        } else {
-          reticle.visible = false;
+      // Lấy vị trí hit từ reticle
+      const pose = new XRRigidTransform(
+        {
+          x: reticle.matrix.elements[12],
+          y: reticle.matrix.elements[13],
+          z: reticle.matrix.elements[14]
         }
+      );
+
+      // Tạo anchor tại vị trí này
+      const hitTestResults = frame.getHitTestResults(hitTestSource);
+      if (hitTestResults.length > 0) {
+        const hit = hitTestResults[0];
+        hit.createAnchor().then((anchor) => {
+          anchors.push(anchor);
+
+          // Gắn mô hình vào anchor
+          model.position.setFromMatrixPosition(reticle.matrix);
+          model.visible = true;
+
+          // Cập nhật vị trí mỗi frame dựa trên anchor
+          anchor.context = { threeObject: model };
+        });
+      }
+    }
+  }
+});
+
+// Render loop
+renderer.setAnimationLoop((timestamp, frame) => {
+  if (frame) {
+    const referenceSpace = renderer.xr.getReferenceSpace();
+    const session = renderer.xr.getSession();
+
+    if (!hitTestSourceRequested) {
+      session.requestReferenceSpace("viewer").then((space) => {
+        session.requestHitTestSource({ space }).then((source) => {
+          hitTestSource = source;
+        });
+      });
+
+      session.addEventListener("end", () => {
+        hitTestSourceRequested = false;
+        hitTestSource = null;
+      });
+
+      hitTestSourceRequested = true;
+    }
+
+    if (hitTestSource) {
+      const hitTestResults = frame.getHitTestResults(hitTestSource);
+
+      if (hitTestResults.length > 0) {
+        const hit = hitTestResults[0];
+        const pose = hit.getPose(referenceSpace);
+
+        reticle.visible = true;
+        reticle.matrix.fromArray(pose.transform.matrix);
+      } else {
+        reticle.visible = false;
       }
     }
 
-    renderer.render(scene, camera);
-  });
+    // Cập nhật anchors
+    for (const anchor of anchors) {
+      const anchorPose = frame.getPose(anchor.anchorSpace, referenceSpace);
+      if (anchorPose && anchor.context?.threeObject) {
+        anchor.context.threeObject.matrix.fromArray(anchorPose.transform.matrix);
+        anchor.context.threeObject.matrix.decompose(
+          anchor.context.threeObject.position,
+          anchor.context.threeObject.quaternion,
+          anchor.context.threeObject.scale
+        );
+      }
+    }
+  }
 
-  // Resize
-  window.addEventListener("resize", () => {
-    camera.aspect = window.innerWidth / window.innerHeight;
-    camera.updateProjectionMatrix();
-    renderer.setSize(window.innerWidth, window.innerHeight);
-  });
+  renderer.render(scene, camera);
+});
+
+// Resize
+window.addEventListener("resize", () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
 </script>
 </body>
 </html>
