@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <title>WebXR AR with Hit-test</title>
+  <title>WebXR AR with Anchor</title>
   <style>
     body { margin: 0; overflow: hidden; }
     canvas { display: block; }
@@ -17,7 +17,6 @@
   let model = null;
   let reticle;
   let hitTestSource = null;
-  let localSpace = null;
   let hitTestSourceRequested = false;
 
   const scene = new THREE.Scene();
@@ -30,7 +29,7 @@
 
   document.body.appendChild(
     ARButton.createButton(renderer, {
-      requiredFeatures: ["hit-test"]
+      requiredFeatures: ["hit-test", "anchors"] // thêm "anchors"
     })
   );
 
@@ -38,7 +37,7 @@
   const light = new THREE.HemisphereLight(0xffffff, 0xbbbbff, 1);
   scene.add(light);
 
-  // Reticle (vòng tròn để chỉ vị trí đặt mô hình)
+  // Reticle
   const ringGeo = new THREE.RingGeometry(0.08, 0.1, 32).rotateX(-Math.PI / 2);
   const ringMat = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
   reticle = new THREE.Mesh(ringGeo, ringMat);
@@ -51,16 +50,40 @@
   loader.load("test.glb", (gltf) => {
     model = gltf.scene;
     model.scale.set(0.2, 0.2, 0.2);
-    model.visible = false; // ẩn cho tới khi đặt
-    scene.add(model);
+    model.visible = false;
   });
 
-  // Bắt sự kiện click để neo mô hình vào mặt phẳng
-  window.addEventListener("click", () => {
-    if (reticle.visible && model) {
-      model.position.setFromMatrixPosition(reticle.matrix);
-      model.visible = true;
-    }
+  // Click để tạo Anchor
+  window.addEventListener("click", async () => {
+    if (!reticle.visible || !model) return;
+
+    const session = renderer.xr.getSession();
+    const frame = renderer.xr.getFrame();
+
+    if (!frame) return;
+
+    // Tạo anchor từ reticle
+    const referenceSpace = renderer.xr.getReferenceSpace();
+    const pose = new XRRigidTransform();
+    const anchor = await frame.createAnchor(new XRRigidTransform(), referenceSpace);
+
+    // Gắn mô hình vào anchor
+    model.visible = true;
+    scene.add(model);
+
+    // cập nhật transform mô hình theo anchor trong mỗi frame
+    anchor.context = { object: model };
+    session.addEventListener("frame", (event) => {
+      const anchorPose = frame.getPose(anchor.anchorSpace, referenceSpace);
+      if (anchorPose) {
+        anchor.context.object.matrix.fromArray(anchorPose.transform.matrix);
+        anchor.context.object.matrix.decompose(
+          anchor.context.object.position,
+          anchor.context.object.quaternion,
+          anchor.context.object.scale
+        );
+      }
+    });
   });
 
   // Vòng lặp render
@@ -71,8 +94,7 @@
 
       if (!hitTestSourceRequested) {
         session.requestReferenceSpace("viewer").then((space) => {
-          localSpace = space;
-          session.requestHitTestSource({ space: localSpace }).then((source) => {
+          session.requestHitTestSource({ space }).then((source) => {
             hitTestSource = source;
           });
         });
