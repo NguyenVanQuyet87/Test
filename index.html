@@ -77,15 +77,24 @@ function cloneModel(template) {
 async function placeAnchorFromLastHit() {
   if (!lastHitResult || !modelTemplate) return;
 
-  // xóa anchor cũ
+  // luôn xóa anchor cũ
   if (currentAnchor) {
-    scene.remove(currentAnchor.group);
-    currentAnchor.anchor.delete();
+    if (currentAnchor.group.parent) {
+      currentAnchor.group.parent.remove(currentAnchor.group);
+    }
+    if (currentAnchor.anchor) {
+      try {
+        currentAnchor.anchor.delete();
+      } catch (e) {
+        console.warn("delete anchor failed:", e);
+      }
+    }
     currentAnchor = null;
     currentModel = null;
   }
 
   try {
+    // chỉ tạo anchor khi click, không để AR tự thêm ban đầu
     const anchor = await lastHitResult.createAnchor();
     const anchorGroup = new THREE.Group();
     anchorGroup.matrixAutoUpdate = false;
