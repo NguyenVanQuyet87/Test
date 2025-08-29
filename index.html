@@ -26,20 +26,37 @@
       font-size: 13px;
       border-radius: 6px;
     }
+    #resetBtn {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      z-index: 10;
+      background: rgba(255,255,255,0.9);
+      color: #111;
+      padding: 6px 10px;
+      font-family: system-ui, sans-serif;
+      font-size: 13px;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+      cursor: pointer;
+    }
   </style>
 </head>
 <body>
   <div id="info">Waiting for AR session...</div>
+  <button id="resetBtn" type="button">Reset AR</button>
   <input type="range" id="opacityControl" min="0" max="1" step="0.05" value="1">
+
   <script type="module">
   import * as THREE from "https://esm.sh/three@0.160.0";
   import { GLTFLoader } from "https://esm.sh/three@0.160.0/examples/jsm/loaders/GLTFLoader.js";
   import { ARButton } from "https://esm.sh/three@0.160.0/examples/jsm/webxr/ARButton.js";
 
   const infoEl = document.getElementById('info');
+  const resetBtn = document.getElementById('resetBtn');
 
   let modelTemplate = null;
-  let currentAnchor = null;
+  let currentAnchor = null;     // { anchor, group, fallback?, offsetMatrix }
   let reticle;
   let hitTestSource = null;
   let hitTestSourceRequested = false;
@@ -47,6 +64,8 @@
   let currentModel = null;
   let isDragging = false;
   let previousTouchX = 0;
+  let isPlacing = false;        // chống re-entrancy
+  const allAnchors = new Set(); // lưu tất cả anchors đã tạo
 
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.01, 20);
@@ -54,6 +73,11 @@
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.xr.enabled = true;
   document.body.appendChild(renderer.domElement);
+
+  // Nơi chứa mọi model/anchor group -> clear một phát là sạch
+  const PLACEMENTS_ROOT = new THREE.Group();
+  PLACEMENTS_ROOT.name = "PLACEMENTS_ROOT";
+  scene.add(PLACEMENTS_ROOT);
 
   document.body.appendChild(
     ARButton.createButton(renderer, {
@@ -65,6 +89,7 @@
 
   scene.add(new THREE.HemisphereLight(0xffffff, 0xbbbbff, 1));
 
+  // Reticle
   const ringGeo = new THREE.RingGeometry(0.08, 0.1, 32).rotateX(-Math.PI / 2);
   const ringMat = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
   reticle = new THREE.Mesh(ringGeo, ringMat);
@@ -72,6 +97,7 @@
   reticle.visible = false;
   scene.add(reticle);
 
+  // Load GLB
   const loader = new GLTFLoader();
   loader.load("test.glb", (gltf) => {
     modelTemplate = gltf.scene;
@@ -82,20 +108,21 @@
     infoEl.textContent = "GLTF load error — check console.";
   });
 
+  // Clone: chỉ clone material (geometry share với template)
   function cloneModel(template) {
     const clone = template.clone(true);
     clone.traverse((node) => {
       if (node.isMesh && node.material) {
         node.material = node.material.clone();
         node.material.transparent = true;
+        node.material.userData.__cloned = true;
       }
     });
     return clone;
   }
 
-  const _UP = new THREE.Vector3(0, 1, 0);
+  // --- helpers định hướng ---
   let _lastHDir = new THREE.Vector3(1, 0, 0);
-
   function getCameraHorizontalDir() {
     const fwd = new THREE.Vector3();
     camera.getWorldDirection(fwd);
@@ -110,7 +137,7 @@
   function computePlacementMatrixFromMatrix(baseMatrix) {
     const poseMat = new THREE.Matrix4().copy(baseMatrix);
     const rotMat = new THREE.Matrix4().extractRotation(poseMat);
-    const normal = new THREE.Vector3(0,1,0).applyMatrix4(rotMat).normalize();
+    const normal = new THREE.Vector3(0,1,0).applyMatrix4(rotMat).normalize(); // trục Y bề mặt
     const camH = getCameraHorizontalDir();
     const camProj = camH.clone().projectOnPlane(normal);
     if (camProj.length() < 1e-3) {
@@ -118,8 +145,8 @@
       if (camProj.length() < 1e-3) camProj.set(1,0,0);
     }
     camProj.normalize();
-    const xAxis = camProj.clone();
-    const yAxis = normal.clone().normalize();
+    const xAxis = camProj.clone();                // trục X song song hình chiếu camera
+    const yAxis = normal.clone().normalize();     // trục Y = pháp tuyến
     const zAxis = new THREE.Vector3().crossVectors(yAxis, xAxis).normalize();
     const basis = new THREE.Matrix4().makeBasis(xAxis, yAxis, zAxis);
     const pos = new THREE.Vector3().setFromMatrixPosition(poseMat);
@@ -127,50 +154,57 @@
     return basis;
   }
 
-  function disposeObject(obj) {
+  // Chỉ dispose materials đã clone; KHÔNG dispose geometry (share với template)
+  function disposeMaterials(obj) {
     obj.traverse((child) => {
       if (child.isMesh) {
-        if (child.geometry) child.geometry.dispose();
-        if (child.material) {
-          if (Array.isArray(child.material)) child.material.forEach(m => m.dispose());
-          else child.material.dispose();
+        const mat = child.material;
+        if (Array.isArray(mat)) {
+          mat.forEach(m => { if (m && m.userData && m.userData.__cloned) m.dispose(); });
+        } else if (mat && mat.userData && mat.userData.__cloned) {
+          mat.dispose();
         }
       }
     });
   }
 
-  function removeCurrentAnchor() {
-    if (!currentAnchor) return;
-    if (currentAnchor.group) {
-      if (currentAnchor.group.parent) {
-        currentAnchor.group.parent.remove(currentAnchor.group);
+  // Xoá toàn bộ placements + anchors (chắc chắn sạch)
+  function clearAllPlacementsAndAnchors() {
+    // Xoá tất cả anchors đã tạo
+    if (allAnchors.size) {
+      for (const a of allAnchors) {
+        try {
+          if (typeof a.delete === 'function') a.delete();
+          else if (typeof a.detach === 'function') a.detach();
+        } catch (e) { /* ignore */ }
       }
-      disposeObject(currentAnchor.group);
+      allAnchors.clear();
     }
-    if (currentAnchor.anchor) {
-      try {
-        if (typeof currentAnchor.anchor.delete === 'function') {
-          currentAnchor.anchor.delete();
-        } else if (typeof currentAnchor.anchor.detach === 'function') {
-          currentAnchor.anchor.detach();
-        }
-      } catch (e) {
-        console.warn("Failed to remove XRAnchor:", e);
-      }
-    }
+    // Xoá mọi group/mesh con dưới PLACEMENTS_ROOT
+    PLACEMENTS_ROOT.children.forEach(c => {
+      disposeMaterials(c);
+      c.removeFromParent();
+    });
     currentAnchor = null;
     currentModel = null;
   }
 
+  // Đặt mô hình
   async function placeAnchorFromLastHit() {
+    if (isPlacing) return;               // chặn re-entrancy
+    isPlacing = true;
+
     const hit = lastHitResult;
     const referenceSpace = renderer.xr.getReferenceSpace();
-    if (!hit || !referenceSpace || !modelTemplate) return;
+    if (!hit || !referenceSpace || !modelTemplate) { isPlacing = false; return; }
 
-    removeCurrentAnchor();
+    // LUÔN xoá hết mọi thứ cũ trước khi thêm mới
+    clearAllPlacementsAndAnchors();
 
     const pose = hit.getPose(referenceSpace);
 
+    // Thử tạo anchor thực
+    let createdWithAnchor = false;
     try {
       let anchor = null;
       try {
@@ -179,6 +213,9 @@
         anchor = null;
         throw e;
       }
+
+      createdWithAnchor = true;
+      allAnchors.add(anchor); // lưu lại để có thể xoá triệt để lần sau
 
       const anchorGroup = new THREE.Group();
       anchorGroup.matrixAutoUpdate = false;
@@ -189,7 +226,7 @@
       const offsetMatrix = inverseAnchorPose.multiply(desiredPlacement);
 
       anchorGroup.matrix.copy(desiredPlacement);
-      scene.add(anchorGroup);
+      PLACEMENTS_ROOT.add(anchorGroup); // gắn vào root duy nhất
 
       const placed = cloneModel(modelTemplate);
       placed.scale.copy(modelTemplate.scale);
@@ -197,41 +234,41 @@
 
       currentAnchor = { anchor, group: anchorGroup, fallback: false, offsetMatrix };
       currentModel = placed;
-      return;
 
     } catch (err) {
+      // Fallback khi không có anchors
       infoEl.textContent = "Anchors not available — fallback mode.";
+      const fallbackGroup = new THREE.Group();
+      fallbackGroup.matrixAutoUpdate = false;
+      const desired = computePlacementMatrixFromMatrix(reticle.matrix);
+      fallbackGroup.matrix.copy(desired);
+      PLACEMENTS_ROOT.add(fallbackGroup);
+
+      const placed = cloneModel(modelTemplate);
+      placed.scale.copy(modelTemplate.scale);
+      fallbackGroup.add(placed);
+
+      currentAnchor = { anchor: null, group: fallbackGroup, fallback: true };
+      currentModel = placed;
+    } finally {
+      isPlacing = false;
     }
-
-    const fallbackGroup = new THREE.Group();
-    fallbackGroup.matrixAutoUpdate = false;
-    const desired = computePlacementMatrixFromMatrix(reticle.matrix);
-    fallbackGroup.matrix.copy(desired);
-    scene.add(fallbackGroup);
-
-    const placed = cloneModel(modelTemplate);
-    placed.scale.copy(modelTemplate.scale);
-    fallbackGroup.add(placed);
-
-    currentAnchor = { anchor: null, group: fallbackGroup, fallback: true };
-    currentModel = placed;
   }
 
+  // Controller select
   const controller = renderer.xr.getController(0);
   controller.addEventListener('select', () => {
-    if (reticle.visible) {
-      placeAnchorFromLastHit();
-    }
+    if (reticle.visible) placeAnchorFromLastHit();
   });
   scene.add(controller);
 
+  // Click desktop
   window.addEventListener('click', () => {
     const session = renderer.xr.getSession();
-    if (session && reticle.visible) {
-      placeAnchorFromLastHit();
-    }
+    if (session && reticle.visible) placeAnchorFromLastHit();
   });
 
+  // Opacity
   const opacitySlider = document.getElementById("opacityControl");
   opacitySlider.addEventListener("input", (e) => {
     const value = parseFloat(e.target.value);
@@ -242,89 +279,11 @@
     }
   });
 
-  renderer.setAnimationLoop((timestamp, frame) => {
-    if (frame) {
-      const referenceSpace = renderer.xr.getReferenceSpace();
-      const session = renderer.xr.getSession();
-
-      if (!hitTestSourceRequested && session) {
-        session.requestReferenceSpace("viewer").then((viewerSpace) => {
-          session.requestHitTestSource({ space: viewerSpace }).then((source) => {
-            hitTestSource = source;
-            infoEl.textContent = "Move device to find surfaces (reticle).";
-          });
-        });
-        session.addEventListener("end", () => {
-          hitTestSourceRequested = false;
-          hitTestSource = null;
-          lastHitResult = null;
-          removeCurrentAnchor();
-          infoEl.textContent = "AR session ended.";
-        });
-        hitTestSourceRequested = true;
-      }
-
-      if (hitTestSource && referenceSpace) {
-        const hitTestResults = frame.getHitTestResults(hitTestSource);
-        if (hitTestResults.length > 0) {
-          const hit = hitTestResults[0];
-          lastHitResult = hit;
-          const pose = hit.getPose(referenceSpace);
-          if (pose) {
-            reticle.visible = true;
-            reticle.matrix.fromArray(pose.transform.matrix);
-          }
-        } else {
-          reticle.visible = false;
-        }
-      }
-
-      if (currentAnchor && currentAnchor.anchor && !currentAnchor.fallback) {
-        try {
-          const anchorPose = frame.getPose(currentAnchor.anchor.anchorSpace, referenceSpace);
-          if (anchorPose) {
-            const anchorMat = new THREE.Matrix4().fromArray(anchorPose.transform.matrix);
-            const finalMat = anchorMat.clone().multiply(currentAnchor.offsetMatrix);
-            currentAnchor.group.matrix.copy(finalMat);
-          }
-        } catch {}
-      }
-    }
-
-    renderer.render(scene, camera);
+  // Reset AR button
+  resetBtn.addEventListener('click', () => {
+    const session = renderer.xr.getSession();
+    if (session) session.end(); // trở về trạng thái ban đầu, nhấn ARButton để vào lại
   });
 
-  renderer.domElement.addEventListener("touchstart", (e) => {
-    if (e.touches.length === 1) {
-      isDragging = true;
-      previousTouchX = e.touches[0].clientX;
-    }
-  });
-  renderer.domElement.addEventListener("touchmove", (e) => {
-    if (isDragging && currentModel && e.touches.length === 1) {
-      const deltaX = e.touches[0].clientX - previousTouchX;
-      previousTouchX = e.touches[0].clientX;
-      currentModel.rotation.y += deltaX * 0.01;
-    }
-  });
-  renderer.domElement.addEventListener("touchend", () => { isDragging = false; });
-
-  window.addEventListener("resize", () => {
-    camera.aspect = window.innerWidth / window.innerHeight;
-    camera.updateProjectionMatrix();
-    renderer.setSize(window.innerWidth, window.innerHeight);
-  });
-
-  renderer.xr.addEventListener('sessionstart', () => {
-    infoEl.textContent = "AR session started — move device to find surfaces.";
-  });
-  renderer.xr.addEventListener('sessionend', () => {
-    removeCurrentAnchor();
-    hitTestSourceRequested = false;
-    hitTestSource = null;
-    infoEl.textContent = "XR session ended.";
-  });
-
-  </script>
-</body>
-</html>
+  // Render loop
+  renderer.setAnimationLoop((timestamp,
