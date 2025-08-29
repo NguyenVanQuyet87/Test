@@ -39,12 +39,12 @@
   const infoEl = document.getElementById('info');
 
   let modelTemplate = null;
-  let currentAnchor = null;     // { anchor, group, fallback?, offsetMatrix (Matrix4) }
+  let currentAnchor = null;
   let reticle;
   let hitTestSource = null;
   let hitTestSourceRequested = false;
   let lastHitResult = null;
-  let currentModel = null;      // tham chiếu đến mô hình hiện tại (child của group)
+  let currentModel = null;
   let isDragging = false;
   let previousTouchX = 0;
 
@@ -55,7 +55,6 @@
   renderer.xr.enabled = true;
   document.body.appendChild(renderer.domElement);
 
-  // Yêu cầu hit-test, anchors optional
   document.body.appendChild(
     ARButton.createButton(renderer, {
       requiredFeatures: ["hit-test"],
@@ -66,7 +65,6 @@
 
   scene.add(new THREE.HemisphereLight(0xffffff, 0xbbbbff, 1));
 
-  // Reticle
   const ringGeo = new THREE.RingGeometry(0.08, 0.1, 32).rotateX(-Math.PI / 2);
   const ringMat = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
   reticle = new THREE.Mesh(ringGeo, ringMat);
@@ -74,24 +72,20 @@
   reticle.visible = false;
   scene.add(reticle);
 
-  // Load GLB model
   const loader = new GLTFLoader();
   loader.load("test.glb", (gltf) => {
     modelTemplate = gltf.scene;
     modelTemplate.scale.set(0.2, 0.2, 0.2);
-    console.log("Model loaded:", modelTemplate);
     infoEl.textContent = "Model loaded — move device to see reticle.";
   }, undefined, (err) => {
     console.error("GLTF load error:", err);
     infoEl.textContent = "GLTF load error — check console.";
   });
 
-  // helper: clone model (clone materials only)
   function cloneModel(template) {
     const clone = template.clone(true);
     clone.traverse((node) => {
       if (node.isMesh && node.material) {
-        // clone material so we can adjust opacity per-instance
         node.material = node.material.clone();
         node.material.transparent = true;
       }
@@ -99,65 +93,60 @@
     return clone;
   }
 
-  // --- helpers ---
   const _UP = new THREE.Vector3(0, 1, 0);
-  let _lastHDir = new THREE.Vector3(1, 0, 0); // fallback khi camera nhìn thẳng lên/xuống
+  let _lastHDir = new THREE.Vector3(1, 0, 0);
 
   function getCameraHorizontalDir() {
     const fwd = new THREE.Vector3();
-    camera.getWorldDirection(fwd);     // hướng nhìn của camera
-    fwd.y = 0;                         // chiếu xuống mặt phẳng XZ
+    camera.getWorldDirection(fwd);
+    fwd.y = 0;
     const len = fwd.length();
-    if (len < 1e-3) return _lastHDir.clone(); // tránh mất hướng khi nhìn gần thẳng đứng
-    fwd.divideScalar(len);              // normalize
+    if (len < 1e-3) return _lastHDir.clone();
+    fwd.divideScalar(len);
     _lastHDir.copy(fwd);
     return fwd;
   }
 
-  // Tạo ma trận đặt (position + orientation) sao cho:
-  // - position lấy từ poseMatrix (hoặc reticleMatrix)
-  // - trục Y = pháp tuyến của bề mặt (lấy từ pose)
-  // - trục X = projection của camera horizontal dir lên mặt phẳng (-> đảm bảo X hướng cùng hướng chiếu)
   function computePlacementMatrixFromMatrix(baseMatrix) {
-    // baseMatrix: THREE.Matrix4 world transform (pose or reticle.matrix)
     const poseMat = new THREE.Matrix4().copy(baseMatrix);
-    // extract rotation to obtain surface normal (Y axis)
     const rotMat = new THREE.Matrix4().extractRotation(poseMat);
     const normal = new THREE.Vector3(0,1,0).applyMatrix4(rotMat).normalize();
-    // camera horizontal direction
     const camH = getCameraHorizontalDir();
-    // project camH onto plane with normal
     const camProj = camH.clone().projectOnPlane(normal);
     if (camProj.length() < 1e-3) {
-      // fallback to previous direction or world X
       camProj.copy(_lastHDir).projectOnPlane(normal);
       if (camProj.length() < 1e-3) camProj.set(1,0,0);
     }
     camProj.normalize();
-
     const xAxis = camProj.clone();
     const yAxis = normal.clone().normalize();
     const zAxis = new THREE.Vector3().crossVectors(yAxis, xAxis).normalize();
-
-    // build basis matrix with columns = xAxis, yAxis, zAxis
     const basis = new THREE.Matrix4().makeBasis(xAxis, yAxis, zAxis);
-    // set position from baseMatrix
     const pos = new THREE.Vector3().setFromMatrixPosition(poseMat);
     basis.setPosition(pos);
     return basis;
   }
 
-  // Khi có XRAnchor, anchorPose thay đổi theo session; để giữ orientation chúng ta
-  // tính offsetMatrix = inverse(anchorPoseAtPlacement) * desiredPlacement.
-  // Sau đó mỗi frame: group.matrix = anchorPose * offsetMatrix.
-  // Hàm remove current anchor/model
+  function disposeObject(obj) {
+    obj.traverse((child) => {
+      if (child.isMesh) {
+        if (child.geometry) child.geometry.dispose();
+        if (child.material) {
+          if (Array.isArray(child.material)) child.material.forEach(m => m.dispose());
+          else child.material.dispose();
+        }
+      }
+    });
+  }
+
   function removeCurrentAnchor() {
     if (!currentAnchor) return;
-    // remove three group
-    if (currentAnchor.group && currentAnchor.group.parent) {
-      scene.remove(currentAnchor.group);
+    if (currentAnchor.group) {
+      if (currentAnchor.group.parent) {
+        currentAnchor.group.parent.remove(currentAnchor.group);
+      }
+      disposeObject(currentAnchor.group);
     }
-    // try to delete/detach XRAnchor if API provides it
     if (currentAnchor.anchor) {
       try {
         if (typeof currentAnchor.anchor.delete === 'function') {
@@ -166,175 +155,112 @@
           currentAnchor.anchor.detach();
         }
       } catch (e) {
-        console.warn("Failed to remove anchor object:", e);
+        console.warn("Failed to remove XRAnchor:", e);
       }
     }
     currentAnchor = null;
     currentModel = null;
   }
 
-  // Hàm đặt anchor / fallback đặt model theo reticle khi anchor không dùng được
   async function placeAnchorFromLastHit() {
     const hit = lastHitResult;
     const referenceSpace = renderer.xr.getReferenceSpace();
-    const session = renderer.xr.getSession();
+    if (!hit || !referenceSpace || !modelTemplate) return;
 
-    if (!hit) {
-      console.warn("No hit to create anchor from (lastHitResult is null).");
-      return;
-    }
-    if (!referenceSpace) {
-      console.warn("No referenceSpace available.");
-      return;
-    }
-    if (!modelTemplate) {
-      console.warn("Model not loaded yet.");
-      return;
-    }
-
-    // remove old anchor/model (luôn xóa trước khi tạo mới)
     removeCurrentAnchor();
 
-    // get pose (we'll use this to derive position & surface normal)
     const pose = hit.getPose(referenceSpace);
-    if (!pose) {
-      console.warn("hit.getPose returned null.");
-    }
 
-    // prepare group for anchor
     try {
-      // try to create real XR anchor
       let anchor = null;
       try {
         anchor = await hit.createAnchor(referenceSpace);
       } catch (e) {
-        // createAnchor may throw or be unavailable
         anchor = null;
-        throw e; // jump to fallback
+        throw e;
       }
 
-      // anchor created successfully
       const anchorGroup = new THREE.Group();
       anchorGroup.matrixAutoUpdate = false;
 
-      // anchorPoseAtPlacement
       const anchorPose = pose ? new THREE.Matrix4().fromArray(pose.transform.matrix) : new THREE.Matrix4().copy(reticle.matrix);
-
-      // desired placement matrix (align X with camera horizontal projection)
       const desiredPlacement = computePlacementMatrixFromMatrix(anchorPose);
-
-      // compute offset: inverse(anchorPose) * desiredPlacement
       const inverseAnchorPose = anchorPose.clone().invert();
       const offsetMatrix = inverseAnchorPose.multiply(desiredPlacement);
 
-      // set initial group.matrix to desiredPlacement
       anchorGroup.matrix.copy(desiredPlacement);
-
       scene.add(anchorGroup);
 
       const placed = cloneModel(modelTemplate);
-      placed.position.set(0,0,0);
-      placed.rotation.set(0,0,0);
       placed.scale.copy(modelTemplate.scale);
-
       anchorGroup.add(placed);
 
       currentAnchor = { anchor, group: anchorGroup, fallback: false, offsetMatrix };
       currentModel = placed;
-
-      console.log("Anchor created successfully (with orientation offset).", anchor);
-      infoEl.textContent = "Anchor created.";
       return;
 
     } catch (err) {
-      // fallback path: anchors not available or failed
-      console.warn("createAnchor failed or not available — using fallback placement.", err);
       infoEl.textContent = "Anchors not available — fallback mode.";
     }
 
-    // --- Fallback: use reticle.matrix as base ---
     const fallbackGroup = new THREE.Group();
     fallbackGroup.matrixAutoUpdate = false;
-
-    // use reticle.matrix (already world transform); compute placement orientation from it
     const desired = computePlacementMatrixFromMatrix(reticle.matrix);
     fallbackGroup.matrix.copy(desired);
-
     scene.add(fallbackGroup);
 
     const placed = cloneModel(modelTemplate);
-    placed.position.set(0,0,0);
-    placed.rotation.set(0,0,0);
     placed.scale.copy(modelTemplate.scale);
     fallbackGroup.add(placed);
 
     currentAnchor = { anchor: null, group: fallbackGroup, fallback: true };
     currentModel = placed;
-    console.log("Placed model as fallback (no anchor).");
   }
 
-  // Controller select (AR input)
   const controller = renderer.xr.getController(0);
   controller.addEventListener('select', () => {
     if (reticle.visible) {
       placeAnchorFromLastHit();
-    } else {
-      console.log("Reticle not visible — nothing to place.");
     }
   });
   scene.add(controller);
 
-  // Mouse / desktop click fallback (only when session exists)
-  window.addEventListener('click', (ev) => {
+  window.addEventListener('click', () => {
     const session = renderer.xr.getSession();
     if (session && reticle.visible) {
       placeAnchorFromLastHit();
     }
   });
 
-  // Opacity control
   const opacitySlider = document.getElementById("opacityControl");
   opacitySlider.addEventListener("input", (e) => {
     const value = parseFloat(e.target.value);
     if (currentModel) {
       currentModel.traverse((node) => {
-        if (node.isMesh && node.material) {
-          node.material.opacity = value;
-        }
+        if (node.isMesh && node.material) node.material.opacity = value;
       });
     }
   });
 
-  // Animation / render loop
   renderer.setAnimationLoop((timestamp, frame) => {
     if (frame) {
       const referenceSpace = renderer.xr.getReferenceSpace();
       const session = renderer.xr.getSession();
 
-      // request hit test source once per session
       if (!hitTestSourceRequested && session) {
         session.requestReferenceSpace("viewer").then((viewerSpace) => {
           session.requestHitTestSource({ space: viewerSpace }).then((source) => {
             hitTestSource = source;
-            console.log("Hit test source created.");
             infoEl.textContent = "Move device to find surfaces (reticle).";
-          }).catch((e) => {
-            console.warn("requestHitTestSource failed:", e);
-            infoEl.textContent = "Hit test not available.";
           });
-        }).catch((e) => {
-          console.warn("requestReferenceSpace(viewer) failed:", e);
         });
-
         session.addEventListener("end", () => {
           hitTestSourceRequested = false;
           hitTestSource = null;
           lastHitResult = null;
-          infoEl.textContent = "AR session ended.";
-          // cleanup anchors/models when session ends
           removeCurrentAnchor();
+          infoEl.textContent = "AR session ended.";
         });
-
         hitTestSourceRequested = true;
       }
 
@@ -347,78 +273,56 @@
           if (pose) {
             reticle.visible = true;
             reticle.matrix.fromArray(pose.transform.matrix);
-          } else {
-            reticle.visible = false;
           }
         } else {
-          lastHitResult = null;
           reticle.visible = false;
         }
       }
 
-      // update anchor group matrix each frame (if real anchor)
       if (currentAnchor && currentAnchor.anchor && !currentAnchor.fallback) {
         try {
           const anchorPose = frame.getPose(currentAnchor.anchor.anchorSpace, referenceSpace);
           if (anchorPose) {
             const anchorMat = new THREE.Matrix4().fromArray(anchorPose.transform.matrix);
-            // apply stored offset to keep desired orientation
             const finalMat = anchorMat.clone().multiply(currentAnchor.offsetMatrix);
             currentAnchor.group.matrix.copy(finalMat);
           }
-        } catch (e) {
-          // some implementations may throw; ignore gracefully
-        }
+        } catch {}
       }
-      // If fallback group (no anchor), we do not update group.matrix so model stays where placed.
-
     }
 
     renderer.render(scene, camera);
   });
 
-  // touch rotate for placed model
   renderer.domElement.addEventListener("touchstart", (e) => {
     if (e.touches.length === 1) {
       isDragging = true;
       previousTouchX = e.touches[0].clientX;
     }
   });
-
   renderer.domElement.addEventListener("touchmove", (e) => {
     if (isDragging && currentModel && e.touches.length === 1) {
       const deltaX = e.touches[0].clientX - previousTouchX;
       previousTouchX = e.touches[0].clientX;
-      // rotate around Y in local space
       currentModel.rotation.y += deltaX * 0.01;
     }
   });
+  renderer.domElement.addEventListener("touchend", () => { isDragging = false; });
 
-  renderer.domElement.addEventListener("touchend", () => {
-    isDragging = false;
-  });
-
-  // resize
   window.addEventListener("resize", () => {
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
     renderer.setSize(window.innerWidth, window.innerHeight);
   });
 
-  // Helpful debug: print session capabilities when session starts
-  renderer.xr.addEventListener('sessionstart', async () => {
-    const session = renderer.xr.getSession();
-    console.log("XR session started:", session);
+  renderer.xr.addEventListener('sessionstart', () => {
     infoEl.textContent = "AR session started — move device to find surfaces.";
   });
-
   renderer.xr.addEventListener('sessionend', () => {
-    console.log("XR session ended");
-    infoEl.textContent = "XR session ended.";
-    // ensure cleanup
     removeCurrentAnchor();
     hitTestSourceRequested = false;
     hitTestSource = null;
+    infoEl.textContent = "XR session ended.";
   });
 
   </script>
