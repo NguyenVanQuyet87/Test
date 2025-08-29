@@ -130,83 +130,67 @@ function getCameraHorizontalDir() {
       return;
     }
 
-    // remove old anchor/model
-    if (currentAnchor) {
-      if (currentAnchor.group && currentAnchor.group.parent) currentAnchor.group.parent.remove(currentAnchor.group);
-      try { if (currentAnchor.anchor && currentAnchor.anchor.delete) currentAnchor.anchor.delete(); } catch (e) { /* ignore */ }
-      currentAnchor = null;
-      currentModel = null;
+// remove old anchor/model (luôn xóa trước khi tạo mới)
+if (currentAnchor) {
+  if (currentAnchor.group && currentAnchor.group.parent) {
+    currentAnchor.group.parent.remove(currentAnchor.group);
+  }
+  try {
+    if (currentAnchor.anchor && currentAnchor.anchor.delete) {
+      currentAnchor.anchor.delete();
     }
-
-    // Try to create anchor (works when device/browser supports anchors)
-    try {
-      // Pass referenceSpace per spec: createAnchor(referenceSpace)
-      const anchor = await hit.createAnchor(referenceSpace);
-      // Create group which will be updated each frame from anchor pose
-      const anchorGroup = new THREE.Group();
-      anchorGroup.matrixAutoUpdate = false;
-      // Optionally set initial matrix from hit pose so it appears immediately
-      const pose = hit.getPose(referenceSpace);
-      if (pose) {
-        anchorGroup.matrix.fromArray(pose.transform.matrix);
-      }
-
-      scene.add(anchorGroup);
-
-      const placed = cloneModel(modelTemplate);
-      // reset local transform on placed to be children-local
-      placed.position.set(0,0,0);
-      placed.rotation.set(0,0,0);
-      placed.scale.copy(modelTemplate.scale || new THREE.Vector3(1,1,1));
-
-      anchorGroup.add(placed);
-      currentAnchor = { anchor, group: anchorGroup };
-      currentModel = placed;
-
-      // orient model so its +X faces camera (optional)
-// --- trong chỗ bạn vừa tạo anchor & placed (sau khi add vào scene) ---
-if (pose) {
-  // X trùng hình chiếu hướng nhìn camera trên mặt đất
-  const xAxis = getCameraHorizontalDir();
-
-  // Dựng hệ trục trực chuẩn: X (vừa tính), Y (hướng lên), Z = X × Y
-  // Rồi Y chuẩn lại = Z × X để đảm bảo trực chuẩn hoàn hảo
-  const zAxis = new THREE.Vector3().crossVectors(xAxis, _UP).normalize();
-  const yAxis = new THREE.Vector3().crossVectors(zAxis, xAxis).normalize();
-
-  const basis = new THREE.Matrix4().makeBasis(xAxis, yAxis, zAxis);
-  const q = new THREE.Quaternion().setFromRotationMatrix(basis);
-  placed.quaternion.copy(q);
+  } catch (e) { /* ignore */ }
+  currentAnchor = null;
+  currentModel = null;
 }
 
-      console.log("Anchor created successfully:", anchor);
-      infoEl.textContent = "Anchor created.";
-      return;
-    } catch (err) {
-      // createAnchor failed — fallback to placing without anchor
-      console.warn("createAnchor failed or not supported, falling back to non-anchored placement.", err && (err.name || err.message) ? err : err);
-      infoEl.textContent = "Anchors not available — using fallback placement.";
-    }
+try {
+  const anchor = await hit.createAnchor(referenceSpace);
+  const anchorGroup = new THREE.Group();
+  anchorGroup.matrixAutoUpdate = false;
 
-    // Fallback: place model at reticle matrix (no anchor)
-    try {
-      const fallbackGroup = new THREE.Group();
-      fallbackGroup.matrixAutoUpdate = false;
-      // copy reticle matrix so we don't keep referencing same object
-      fallbackGroup.matrix.copy(reticle.matrix);
-      scene.add(fallbackGroup);
+  const pose = hit.getPose(referenceSpace);
+  if (pose) {
+    anchorGroup.matrix.fromArray(pose.transform.matrix);
+  }
 
-      const placed = cloneModel(modelTemplate);
-      placed.position.set(0,0,0);
-      placed.rotation.set(0,0,0);
-      placed.scale.copy(modelTemplate.scale || new THREE.Vector3(1,1,1));
+  scene.add(anchorGroup);
 
-      fallbackGroup.add(placed);
-      // treat this like "currentAnchor" but anchor is null (no anchorSpace)
-      currentAnchor = { anchor: null, group: fallbackGroup, fallback: true };
-      currentModel = placed;
+  const placed = cloneModel(modelTemplate);
+  placed.position.set(0, 0, 0);
+  placed.rotation.set(0, 0, 0);
+  placed.scale.copy(modelTemplate.scale);
 
-      console.log("Placed model as fallback (no anchor).");
+  anchorGroup.add(placed);
+  currentAnchor = { anchor, group: anchorGroup };
+  currentModel = placed;
+
+  console.log("Anchor created successfully:", anchor);
+  infoEl.textContent = "Anchor created.";
+  return;
+
+} catch (err) {
+  console.warn("createAnchor failed, using fallback.", err);
+  infoEl.textContent = "Anchors not available — fallback mode.";
+}
+
+// --- Fallback ---
+const fallbackGroup = new THREE.Group();
+fallbackGroup.matrixAutoUpdate = false;
+fallbackGroup.matrix.copy(reticle.matrix);
+scene.add(fallbackGroup);
+
+const placed = cloneModel(modelTemplate);
+placed.position.set(0, 0, 0);
+placed.rotation.set(0, 0, 0);
+placed.scale.copy(modelTemplate.scale);
+
+fallbackGroup.add(placed);
+currentAnchor = { anchor: null, group: fallbackGroup, fallback: true };
+currentModel = placed;
+
+console.log("Placed model as fallback (no anchor).");
+
     } catch (err) {
       console.error("Fallback placement failed:", err);
     }
