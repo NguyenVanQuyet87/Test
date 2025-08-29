@@ -78,7 +78,7 @@ function cloneModel(template) {
 }
 
 // đặt model + anchor (chỉ một)
-async function placeAnchorFromHit(hit, referenceSpace) {
+async function placeAnchorFromLastHit(hit, referenceSpace) {
   if (!hit || !modelTemplate) return;
 
   // dọn anchor cũ
