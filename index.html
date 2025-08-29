@@ -97,7 +97,20 @@
     });
     return clone;
   }
+// --- helpers (đặt ngoài function, ở phạm vi module) ---
+const _UP = new THREE.Vector3(0, 1, 0);
+let _lastHDir = new THREE.Vector3(1, 0, 0); // fallback khi camera nhìn thẳng lên/xuống
 
+function getCameraHorizontalDir() {
+  const fwd = new THREE.Vector3();
+  camera.getWorldDirection(fwd);     // hướng nhìn của camera (độ dài = 1)
+  fwd.y = 0;                         // chiếu xuống mặt phẳng XZ (mặt đất)
+  const len = fwd.length();
+  if (len < 1e-3) return _lastHDir.clone(); // tránh mất hướng khi nhìn gần thẳng đứng
+  fwd.divideScalar(len);              // normalize
+  _lastHDir.copy(fwd);
+  return fwd;
+}
   // Hàm đặt anchor / fallback đặt model theo reticle khi anchor không dùng được
   async function placeAnchorFromLastHit() {
     const hit = lastHitResult;
@@ -151,27 +164,18 @@
       currentModel = placed;
 
       // orient model so its +X faces camera (optional)
+// --- trong chỗ bạn vừa tạo anchor & placed (sau khi add vào scene) ---
 if (pose) {
-  const m = new THREE.Matrix4().fromArray(pose.transform.matrix);
-  const position = new THREE.Vector3().setFromMatrixPosition(m);
+  // X trùng hình chiếu hướng nhìn camera trên mặt đất
+  const xAxis = getCameraHorizontalDir();
 
-  // Lấy vị trí camera
-  const camPos = new THREE.Vector3();
-  camera.getWorldPosition(camPos);
+  // Dựng hệ trục trực chuẩn: X (vừa tính), Y (hướng lên), Z = X × Y
+  // Rồi Y chuẩn lại = Z × X để đảm bảo trực chuẩn hoàn hảo
+  const zAxis = new THREE.Vector3().crossVectors(xAxis, _UP).normalize();
+  const yAxis = new THREE.Vector3().crossVectors(zAxis, xAxis).normalize();
 
-  // Vector từ mô hình -> camera
-  const dir = new THREE.Vector3().subVectors(camPos, position);
-
-  // Chiếu xuống mặt phẳng XZ (bỏ Y)
-  dir.y = 0;
-  dir.normalize();
-
-  // Tạo quaternion xoay từ +X sang dir
-  const q = new THREE.Quaternion().setFromUnitVectors(
-    new THREE.Vector3(1, 0, 0), // trục chuẩn +X
-    dir
-  );
-
+  const basis = new THREE.Matrix4().makeBasis(xAxis, yAxis, zAxis);
+  const q = new THREE.Quaternion().setFromRotationMatrix(basis);
   placed.quaternion.copy(q);
 }
 
