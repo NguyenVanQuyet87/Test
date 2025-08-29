@@ -151,15 +151,29 @@
       currentModel = placed;
 
       // orient model so its +X faces camera (optional)
-      if (pose) {
-        const m = new THREE.Matrix4().fromArray(pose.transform.matrix);
-        const position = new THREE.Vector3().setFromMatrixPosition(m);
-        const camPos = new THREE.Vector3();
-        camera.getWorldPosition(camPos);
-        const dir = new THREE.Vector3().subVectors(camPos, position).normalize();
-        const q = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(1,0,0), dir);
-        placed.quaternion.copy(q);
-      }
+if (pose) {
+  const m = new THREE.Matrix4().fromArray(pose.transform.matrix);
+  const position = new THREE.Vector3().setFromMatrixPosition(m);
+
+  // Lấy vị trí camera
+  const camPos = new THREE.Vector3();
+  camera.getWorldPosition(camPos);
+
+  // Vector từ mô hình -> camera
+  const dir = new THREE.Vector3().subVectors(camPos, position);
+
+  // Chiếu xuống mặt phẳng XZ (bỏ Y)
+  dir.y = 0;
+  dir.normalize();
+
+  // Tạo quaternion xoay từ +X sang dir
+  const q = new THREE.Quaternion().setFromUnitVectors(
+    new THREE.Vector3(1, 0, 0), // trục chuẩn +X
+    dir
+  );
+
+  placed.quaternion.copy(q);
+}
 
       console.log("Anchor created successfully:", anchor);
       infoEl.textContent = "Anchor created.";
