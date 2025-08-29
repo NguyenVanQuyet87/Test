@@ -39,7 +39,7 @@
   const infoEl = document.getElementById('info');
 
   let modelTemplate = null;
-  let currentAnchor = null;     // { anchor, group }
+  let currentAnchor = null;     // { anchor, group, fallback?, offsetMatrix (Matrix4) }
   let reticle;
   let hitTestSource = null;
   let hitTestSourceRequested = false;
@@ -55,7 +55,7 @@
   renderer.xr.enabled = true;
   document.body.appendChild(renderer.domElement);
 
-  // Yêu cầu hit-test, anchors là optional để session dễ khởi động hơn.
+  // Yêu cầu hit-test, anchors optional
   document.body.appendChild(
     ARButton.createButton(renderer, {
       requiredFeatures: ["hit-test"],
@@ -86,31 +86,93 @@
     infoEl.textContent = "GLTF load error — check console.";
   });
 
-  // helper: clone model (clone materials)
+  // helper: clone model (clone materials only)
   function cloneModel(template) {
     const clone = template.clone(true);
     clone.traverse((node) => {
       if (node.isMesh && node.material) {
+        // clone material so we can adjust opacity per-instance
         node.material = node.material.clone();
         node.material.transparent = true;
       }
     });
     return clone;
   }
-// --- helpers (đặt ngoài function, ở phạm vi module) ---
-const _UP = new THREE.Vector3(0, 1, 0);
-let _lastHDir = new THREE.Vector3(1, 0, 0); // fallback khi camera nhìn thẳng lên/xuống
 
-function getCameraHorizontalDir() {
-  const fwd = new THREE.Vector3();
-  camera.getWorldDirection(fwd);     // hướng nhìn của camera (độ dài = 1)
-  fwd.y = 0;                         // chiếu xuống mặt phẳng XZ (mặt đất)
-  const len = fwd.length();
-  if (len < 1e-3) return _lastHDir.clone(); // tránh mất hướng khi nhìn gần thẳng đứng
-  fwd.divideScalar(len);              // normalize
-  _lastHDir.copy(fwd);
-  return fwd;
-}
+  // --- helpers ---
+  const _UP = new THREE.Vector3(0, 1, 0);
+  let _lastHDir = new THREE.Vector3(1, 0, 0); // fallback khi camera nhìn thẳng lên/xuống
+
+  function getCameraHorizontalDir() {
+    const fwd = new THREE.Vector3();
+    camera.getWorldDirection(fwd);     // hướng nhìn của camera
+    fwd.y = 0;                         // chiếu xuống mặt phẳng XZ
+    const len = fwd.length();
+    if (len < 1e-3) return _lastHDir.clone(); // tránh mất hướng khi nhìn gần thẳng đứng
+    fwd.divideScalar(len);              // normalize
+    _lastHDir.copy(fwd);
+    return fwd;
+  }
+
+  // Tạo ma trận đặt (position + orientation) sao cho:
+  // - position lấy từ poseMatrix (hoặc reticleMatrix)
+  // - trục Y = pháp tuyến của bề mặt (lấy từ pose)
+  // - trục X = projection của camera horizontal dir lên mặt phẳng (-> đảm bảo X hướng cùng hướng chiếu)
+  function computePlacementMatrixFromMatrix(baseMatrix) {
+    // baseMatrix: THREE.Matrix4 world transform (pose or reticle.matrix)
+    const poseMat = new THREE.Matrix4().copy(baseMatrix);
+    // extract rotation to obtain surface normal (Y axis)
+    const rotMat = new THREE.Matrix4().extractRotation(poseMat);
+    const normal = new THREE.Vector3(0,1,0).applyMatrix4(rotMat).normalize();
+    // camera horizontal direction
+    const camH = getCameraHorizontalDir();
+    // project camH onto plane with normal
+    const camProj = camH.clone().projectOnPlane(normal);
+    if (camProj.length() < 1e-3) {
+      // fallback to previous direction or world X
+      camProj.copy(_lastHDir).projectOnPlane(normal);
+      if (camProj.length() < 1e-3) camProj.set(1,0,0);
+    }
+    camProj.normalize();
+
+    const xAxis = camProj.clone();
+    const yAxis = normal.clone().normalize();
+    const zAxis = new THREE.Vector3().crossVectors(yAxis, xAxis).normalize();
+
+    // build basis matrix with columns = xAxis, yAxis, zAxis
+    const basis = new THREE.Matrix4().makeBasis(xAxis, yAxis, zAxis);
+    // set position from baseMatrix
+    const pos = new THREE.Vector3().setFromMatrixPosition(poseMat);
+    basis.setPosition(pos);
+    return basis;
+  }
+
+  // Khi có XRAnchor, anchorPose thay đổi theo session; để giữ orientation chúng ta
+  // tính offsetMatrix = inverse(anchorPoseAtPlacement) * desiredPlacement.
+  // Sau đó mỗi frame: group.matrix = anchorPose * offsetMatrix.
+  // Hàm remove current anchor/model
+  function removeCurrentAnchor() {
+    if (!currentAnchor) return;
+    // remove three group
+    if (currentAnchor.group && currentAnchor.group.parent) {
+      scene.remove(currentAnchor.group);
+    }
+    // try to delete/detach XRAnchor if API provides it
+    if (currentAnchor.anchor) {
+      try {
+        if (typeof currentAnchor.anchor.delete === 'function') {
+          currentAnchor.anchor.delete();
+        } else if (typeof currentAnchor.anchor.detach === 'function') {
+          currentAnchor.anchor.detach();
+        }
+      } catch (e) {
+        console.warn("Failed to remove anchor object:", e);
+      }
+    }
+    currentAnchor = null;
+    currentModel = null;
+  }
+
   // Hàm đặt anchor / fallback đặt model theo reticle khi anchor không dùng được
   async function placeAnchorFromLastHit() {
     const hit = lastHitResult;
@@ -131,60 +193,81 @@ function getCameraHorizontalDir() {
     }
 
     // remove old anchor/model (luôn xóa trước khi tạo mới)
-    if (currentAnchor) {
-      if (currentAnchor.group && currentAnchor.group.parent) {
-        currentAnchor.group.parent.remove(currentAnchor.group);
-      }
-      try {
-        if (currentAnchor.anchor && currentAnchor.anchor.delete) {
-          currentAnchor.anchor.delete();
-        }
-      } catch (e) { /* ignore */ }
-      currentAnchor = null;
-      currentModel = null;
+    removeCurrentAnchor();
+
+    // get pose (we'll use this to derive position & surface normal)
+    const pose = hit.getPose(referenceSpace);
+    if (!pose) {
+      console.warn("hit.getPose returned null.");
     }
 
+    // prepare group for anchor
     try {
-      const anchor = await hit.createAnchor(referenceSpace);
+      // try to create real XR anchor
+      let anchor = null;
+      try {
+        anchor = await hit.createAnchor(referenceSpace);
+      } catch (e) {
+        // createAnchor may throw or be unavailable
+        anchor = null;
+        throw e; // jump to fallback
+      }
+
+      // anchor created successfully
       const anchorGroup = new THREE.Group();
       anchorGroup.matrixAutoUpdate = false;
-    
-      const pose = hit.getPose(referenceSpace);
-      if (pose) {
-        anchorGroup.matrix.fromArray(pose.transform.matrix);
-      }
-    
+
+      // anchorPoseAtPlacement
+      const anchorPose = pose ? new THREE.Matrix4().fromArray(pose.transform.matrix) : new THREE.Matrix4().copy(reticle.matrix);
+
+      // desired placement matrix (align X with camera horizontal projection)
+      const desiredPlacement = computePlacementMatrixFromMatrix(anchorPose);
+
+      // compute offset: inverse(anchorPose) * desiredPlacement
+      const inverseAnchorPose = anchorPose.clone().invert();
+      const offsetMatrix = inverseAnchorPose.multiply(desiredPlacement);
+
+      // set initial group.matrix to desiredPlacement
+      anchorGroup.matrix.copy(desiredPlacement);
+
       scene.add(anchorGroup);
-    
+
       const placed = cloneModel(modelTemplate);
-      placed.position.set(0, 0, 0);
-      placed.rotation.set(0, 0, 0);
+      placed.position.set(0,0,0);
+      placed.rotation.set(0,0,0);
       placed.scale.copy(modelTemplate.scale);
-    
+
       anchorGroup.add(placed);
-      currentAnchor = { anchor, group: anchorGroup };
+
+      currentAnchor = { anchor, group: anchorGroup, fallback: false, offsetMatrix };
       currentModel = placed;
-    
-      console.log("Anchor created successfully:", anchor);
+
+      console.log("Anchor created successfully (with orientation offset).", anchor);
       infoEl.textContent = "Anchor created.";
       return;
-    
+
     } catch (err) {
-      console.warn("createAnchor failed, using fallback.", err);
+      // fallback path: anchors not available or failed
+      console.warn("createAnchor failed or not available — using fallback placement.", err);
       infoEl.textContent = "Anchors not available — fallback mode.";
     }
-    
-    // --- Fallback ---
+
+    // --- Fallback: use reticle.matrix as base ---
     const fallbackGroup = new THREE.Group();
     fallbackGroup.matrixAutoUpdate = false;
-    fallbackGroup.matrix.copy(reticle.matrix);
+
+    // use reticle.matrix (already world transform); compute placement orientation from it
+    const desired = computePlacementMatrixFromMatrix(reticle.matrix);
+    fallbackGroup.matrix.copy(desired);
+
     scene.add(fallbackGroup);
-    
+
     const placed = cloneModel(modelTemplate);
-    placed.position.set(0, 0, 0);
-    placed.rotation.set(0, 0, 0);
+    placed.position.set(0,0,0);
+    placed.rotation.set(0,0,0);
     placed.scale.copy(modelTemplate.scale);
     fallbackGroup.add(placed);
+
     currentAnchor = { anchor: null, group: fallbackGroup, fallback: true };
     currentModel = placed;
     console.log("Placed model as fallback (no anchor).");
@@ -248,6 +331,8 @@ function getCameraHorizontalDir() {
           hitTestSource = null;
           lastHitResult = null;
           infoEl.textContent = "AR session ended.";
+          // cleanup anchors/models when session ends
+          removeCurrentAnchor();
         });
 
         hitTestSourceRequested = true;
@@ -273,9 +358,16 @@ function getCameraHorizontalDir() {
 
       // update anchor group matrix each frame (if real anchor)
       if (currentAnchor && currentAnchor.anchor && !currentAnchor.fallback) {
-        const anchorPose = frame.getPose(currentAnchor.anchor.anchorSpace, referenceSpace);
-        if (anchorPose) {
-          currentAnchor.group.matrix.fromArray(anchorPose.transform.matrix);
+        try {
+          const anchorPose = frame.getPose(currentAnchor.anchor.anchorSpace, referenceSpace);
+          if (anchorPose) {
+            const anchorMat = new THREE.Matrix4().fromArray(anchorPose.transform.matrix);
+            // apply stored offset to keep desired orientation
+            const finalMat = anchorMat.clone().multiply(currentAnchor.offsetMatrix);
+            currentAnchor.group.matrix.copy(finalMat);
+          }
+        } catch (e) {
+          // some implementations may throw; ignore gracefully
         }
       }
       // If fallback group (no anchor), we do not update group.matrix so model stays where placed.
@@ -317,13 +409,16 @@ function getCameraHorizontalDir() {
   renderer.xr.addEventListener('sessionstart', async () => {
     const session = renderer.xr.getSession();
     console.log("XR session started:", session);
-    // check if anchors supported via session.supportedAnchors? not standard; use try/catch when createAnchor
     infoEl.textContent = "AR session started — move device to find surfaces.";
   });
 
   renderer.xr.addEventListener('sessionend', () => {
     console.log("XR session ended");
     infoEl.textContent = "XR session ended.";
+    // ensure cleanup
+    removeCurrentAnchor();
+    hitTestSourceRequested = false;
+    hitTestSource = null;
   });
 
   </script>
