@@ -78,28 +78,19 @@ function cloneModel(template) {
 }
 
 // đặt model + anchor (chỉ một)
-async function placeAnchorFromLastHit() {
-  if (!lastHitResult || !modelTemplate) return;
+async function placeAnchorFromHit(hit, referenceSpace) {
+  if (!hit || !modelTemplate) return;
 
-  // luôn xóa anchor cũ
+  // dọn anchor cũ
   if (currentAnchor) {
-    if (currentAnchor.group.parent) {
-      currentAnchor.group.parent.remove(currentAnchor.group);
-    }
-    if (currentAnchor.anchor) {
-      try {
-        currentAnchor.anchor.delete();
-      } catch (e) {
-        console.warn("delete anchor failed:", e);
-      }
-    }
+    if (currentAnchor.group.parent) currentAnchor.group.parent.remove(currentAnchor.group);
+    try { currentAnchor.anchor.delete(); } catch {}
     currentAnchor = null;
     currentModel = null;
   }
 
   try {
-    // chỉ tạo anchor khi click, không để AR tự thêm ban đầu
-    const anchor = await lastHitResult.createAnchor();
+    const anchor = await hit.createAnchor();
     const anchorGroup = new THREE.Group();
     anchorGroup.matrixAutoUpdate = false;
     scene.add(anchorGroup);
@@ -109,6 +100,18 @@ async function placeAnchorFromLastHit() {
 
     currentAnchor = { anchor, group: anchorGroup };
     currentModel = placed;
+
+    // căn hướng: trục X → camera
+    const pose = hit.getPose(referenceSpace);
+    if (pose) {
+      const position = new THREE.Vector3().setFromMatrixPosition(new THREE.Matrix4().fromArray(pose.transform.matrix));
+      const camPos = new THREE.Vector3();
+      camera.getWorldPosition(camPos);
+
+      const dir = new THREE.Vector3().subVectors(camPos, position).normalize(); // vector từ model → camera
+      const q = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(1,0,0), dir);
+      placed.quaternion.copy(q);
+    }
 
     console.log("Anchor created:", anchor);
   } catch (err) {
