@@ -29,7 +29,9 @@ let hitTestSource = null;
 let hitTestSourceRequested = false;
 let lastHitResult = null;
 let currentModel = null;      // tham chiếu đến mô hình hiện tại
-
+let isDragging = false;
+let previousTouchX = 0;
+  
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.01, 20);
 const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
@@ -190,7 +192,27 @@ renderer.setAnimationLoop((timestamp, frame) => {
 
   renderer.render(scene, camera);
 });
+renderer.domElement.addEventListener("touchstart", (e) => {
+  if (e.touches.length === 1) {
+    isDragging = true;
+    previousTouchX = e.touches[0].clientX;
+  }
+});
 
+renderer.domElement.addEventListener("touchmove", (e) => {
+  if (isDragging && currentModel && e.touches.length === 1) {
+    const deltaX = e.touches[0].clientX - previousTouchX;
+    previousTouchX = e.touches[0].clientX;
+
+    // xoay quanh trục Y
+    currentModel.rotation.y += deltaX * 0.01;
+  }
+});
+
+renderer.domElement.addEventListener("touchend", () => {
+  isDragging = false;
+});
+  
 // resize
 window.addEventListener("resize", () => {
   camera.aspect = window.innerWidth / window.innerHeight;
