@@ -2,7 +2,7 @@
 <html lang="vi">
 <head>
   <meta charset="utf-8" />
-  <title>WebXR AR Anchored Model + Marker Tracking</title>
+  <title>WebXR AR với Marker Tracking và Hiệu Ứng Quét</title>
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <style>
     body { margin: 0; overflow: hidden; }
@@ -54,13 +54,110 @@
       font-size: 13px;
       border-radius: 6px;
     }
+    #placementBtn {
+      position: absolute;
+      bottom: 100px;
+      right: 10px;
+      z-index: 10;
+      background: rgba(255,255,255,0.9);
+      color: #111;
+      padding: 8px 12px;
+      font-family: system-ui, sans-serif;
+      font-size: 13px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      cursor: pointer;
+      display: none;
+    }
+    /* Hiệu ứng quét QR code */
+    #markerOverlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 5;
+      display: none;
+    }
+    .qr-frame {
+      position: absolute;
+      border: 4px solid transparent;
+      border-radius: 12px;
+      box-shadow: 0 0 20px rgba(255, 255, 0, 0.7);
+      animation: pulse 1.5s infinite alternate;
+    }
+    .qr-corner {
+      position: absolute;
+      width: 20px;
+      height: 20px;
+      border: 4px solid #ff0;
+    }
+    .qr-corner-tl {
+      top: -4px;
+      left: -4px;
+      border-right: none;
+      border-bottom: none;
+      border-top-left-radius: 8px;
+    }
+    .qr-corner-tr {
+      top: -4px;
+      right: -4px;
+      border-left: none;
+      border-bottom: none;
+      border-top-right-radius: 8px;
+    }
+    .qr-corner-bl {
+      bottom: -4px;
+      left: -4px;
+      border-right: none;
+      border-top: none;
+      border-bottom-left-radius: 8px;
+    }
+    .qr-corner-br {
+      bottom: -4px;
+      right: -4px;
+      border-left: none;
+      border-top: none;
+      border-bottom-right-radius: 8px;
+    }
+    .scan-line {
+      position: absolute;
+      height: 3px;
+      width: 100%;
+      background: linear-gradient(to right, transparent, #ff0, transparent);
+      top: 50%;
+      animation: scan 2s linear infinite;
+    }
+    @keyframes pulse {
+      0% { box-shadow: 0 0 10px rgba(255, 255, 0, 0.5); }
+      100% { box-shadow: 0 0 30px rgba(255, 255, 0, 1); }
+    }
+    @keyframes scan {
+      0% { top: 0%; opacity: 0; }
+      10% { opacity: 1; }
+      90% { opacity: 1; }
+      100% { top: 100%; opacity: 0; }
+    }
   </style>
 </head>
 <body>
   <div id="info">Đang chờ khởi động AR...</div>
   <div id="markerStatus">Chưa phát hiện marker</div>
   <button id="resetBtn" type="button">Reset AR</button>
+  <button id="placementBtn" type="button">Đặt mô hình</button>
   <input type="range" id="opacityControl" min="0" max="1" step="0.05" value="1">
+  
+  <!-- Overlay hiệu ứng quét QR code -->
+  <div id="markerOverlay">
+    <div class="qr-frame">
+      <div class="qr-corner qr-corner-tl"></div>
+      <div class="qr-corner qr-corner-tr"></div>
+      <div class="qr-corner qr-corner-bl"></div>
+      <div class="qr-corner qr-corner-br"></div>
+      <div class="scan-line"></div>
+    </div>
+  </div>
 
   <script type="module">
   import * as THREE from "https://esm.sh/three@0.160.0";
@@ -70,6 +167,9 @@
   const infoEl = document.getElementById("info");
   const markerStatusEl = document.getElementById("markerStatus");
   const resetBtn = document.getElementById("resetBtn");
+  const placementBtn = document.getElementById("placementBtn");
+  const markerOverlay = document.getElementById("markerOverlay");
+  const qrFrame = document.querySelector('.qr-frame');
 
   let modelTemplate = null;
   let currentAnchor = null;
@@ -80,6 +180,8 @@
   let isDragging = false;
   let previousTouchX = 0;
   let isPlacing = false;
+  let markerDetected = false;
+  let markerPose = null;
   const allAnchors = new Set();
 
   const scene = new THREE.Scene();
@@ -91,6 +193,43 @@
 
   const PLACEMENTS_ROOT = new THREE.Group();
   scene.add(PLACEMENTS_ROOT);
+
+  // Hàm cập nhật vị trí và kích thước của hiệu ứng quét QR dựa trên vị trí marker
+  function updateQRFramePosition(pose) {
+    if (!pose) return;
+    
+    // Lấy ma trận chuyển đổi từ pose
+    const matrix = new THREE.Matrix4().fromArray(pose.transform.matrix);
+    const position = new THREE.Vector3();
+    const scale = new THREE.Vector3();
+    const quaternion = new THREE.Quaternion();
+    matrix.decompose(position, quaternion, scale);
+    
+    // Chuyển đổi vị trí 3D sang tọa độ màn hình 2D
+    const vector = position.clone();
+    vector.project(camera);
+    
+    const x = (vector.x * 0.5 + 0.5) * window.innerWidth;
+    const y = -(vector.y * 0.5 - 0.5) * window.innerHeight;
+    
+    // Ước tính kích thước của marker trên màn hình dựa trên khoảng cách
+    const distance = position.distanceTo(camera.position);
+    const markerSize = (0.15 / distance) * 500; // 0.15 là widthInMeters của marker
+    
+    // Cập nhật vị trí và kích thước của khung QR
+    qrFrame.style.width = `${markerSize}px`;
+    qrFrame.style.height = `${markerSize}px`;
+    qrFrame.style.left = `${x - markerSize/2}px`;
+    qrFrame.style.top = `${y - markerSize/2}px`;
+    
+    // Hiển thị overlay
+    markerOverlay.style.display = 'block';
+  }
+
+  // Ẩn hiệu ứng quét QR
+  function hideQRFrame() {
+    markerOverlay.style.display = 'none';
+  }
 
   async function initARButton() {
     if (!("xr" in navigator)) { infoEl.textContent = "Trình duyệt không hỗ trợ WebXR."; return; }
@@ -128,7 +267,7 @@
   reticle.matrixAutoUpdate = false;
   reticle.visible = false;
   scene.add(reticle);
-    
+
   // Tạo hình khối mẫu nếu không tải được GLTF
   function createFallbackModel() {
     const geometry = new THREE.BoxGeometry(0.1, 0.1, 0.1);
@@ -139,7 +278,7 @@
     group.scale.set(0.2, 0.2, 0.2);
     return group;
   }
-    
+
   const loader = new GLTFLoader();
   loader.load("test.glb", (gltf)=>{
     modelTemplate = gltf.scene;
@@ -175,7 +314,7 @@
     currentAnchor = null;
     currentModel = null;
   }
-    
+
   // Hàm đặt mô hình lên marker
   function placeModelOnMarker(pose) {
     if (!modelTemplate || isPlacing) return;
@@ -207,8 +346,11 @@
     infoEl.textContent = "Model đã được đặt trên marker!";
     isPlacing = false;
     markerDetected = false;
-  }
     
+    // Ẩn hiệu ứng quét sau khi đặt model
+    hideQRFrame();
+  }
+
   // --- orientation helpers ---
   let _lastHDir = new THREE.Vector3(1, 0, 0);
   function getCameraHorizontalDir() {
@@ -221,6 +363,7 @@
     _lastHDir.copy(fwd);
     return fwd;
   }
+
   function computePlacementMatrixFromMatrix(baseMatrix) {
     const poseMat = new THREE.Matrix4().copy(baseMatrix);
     const rotMat = new THREE.Matrix4().extractRotation(poseMat);
@@ -269,7 +412,18 @@
   const controller = renderer.xr.getController(0);
   controller.addEventListener("select", ()=>{ if (reticle.visible) placeAnchorFromLastHit(); });
   scene.add(controller);
-  window.addEventListener("click", ()=>{ const s=renderer.xr.getSession(); if (s && reticle.visible) placeAnchorFromLastHit(); });
+  
+  window.addEventListener("click", ()=>{ 
+    const s=renderer.xr.getSession(); 
+    if (s && reticle.visible) placeAnchorFromLastHit(); 
+  });
+
+  placementBtn.addEventListener("click", ()=>{
+    if (markerPose) {
+      placeModelOnMarker(markerPose);
+      placementBtn.style.display = 'none';
+    }
+  });
 
   document.getElementById("opacityControl").addEventListener("input",(e)=>{
     const v = parseFloat(e.target.value);
@@ -281,6 +435,7 @@
   resetBtn.addEventListener("click",()=>{ 
     const s=renderer.xr.getSession(); 
     if (s) s.end(); 
+    hideQRFrame();
   });
 
   renderer.xr.addEventListener("sessionstart", async ()=>{
@@ -294,6 +449,9 @@
       clearAllPlacementsAndAnchors(); 
       infoEl.textContent = "AR session đã kết thúc.";
       markerStatusEl.textContent = "Chưa phát hiện marker";
+      placementBtn.style.display = 'none';
+      markerDetected = false;
+      hideQRFrame();
     });
   });
 
@@ -318,11 +476,14 @@
             const pose = frame.getPose(result.imageSpace, refSpace);
             if (pose) {
               const p = pose.transform.position;
-              const q = pose.transform.orientation;
               markerStatusEl.textContent = 
                 `Marker được nhận diện!\n`+
                 `Vị trí: x=${p.x.toFixed(2)}, y=${p.y.toFixed(2)}, z=${p.z.toFixed(2)}`;
-               // Lưu trữ pose của marker để sử dụng sau
+              
+              // Cập nhật hiệu ứng quét QR tại vị trí marker
+              updateQRFramePosition(pose);
+              
+              // Lưu trữ pose của marker để sử dụng sau
               markerPose = pose;
               
               // Tự động đặt model khi phát hiện marker
@@ -344,12 +505,14 @@
             markerStatusEl.textContent = `Marker trạng thái: ${state}`;
             markerDetected = false;
             placementBtn.style.display = 'none';
+            hideQRFrame();
           }
         }
       } else {
         markerStatusEl.textContent = "Chưa phát hiện marker";
         markerDetected = false;
         placementBtn.style.display = 'none';
+        hideQRFrame();
       }
     }
     renderer.render(scene,camera);
@@ -359,7 +522,11 @@
   renderer.domElement.addEventListener("touchmove",(e)=>{ if (isDragging && currentModel && e.touches.length===1) { const dx=e.touches[0].clientX-previousTouchX; previousTouchX=e.touches[0].clientX; currentModel.rotation.y += dx*0.01; } });
   renderer.domElement.addEventListener("touchend",()=>{ isDragging=false; });
 
-  window.addEventListener("resize",()=>{ camera.aspect = window.innerWidth/window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); });
+  window.addEventListener("resize",()=>{ 
+    camera.aspect = window.innerWidth/window.innerHeight; 
+    camera.updateProjectionMatrix(); 
+    renderer.setSize(window.innerWidth, window.innerHeight); 
+  });
   </script>
 </body>
 </html>
