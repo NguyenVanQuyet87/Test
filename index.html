@@ -81,9 +81,16 @@
     if (!("xr" in navigator)) { infoEl.textContent = "Trình duyệt không hỗ trợ WebXR."; return; }
     const supported = await navigator.xr.isSessionSupported("immersive-ar");
     if (!supported) { infoEl.textContent = "Thiết bị không hỗ trợ AR."; return; }
+    const imgBitmap = await fetch("marker.png").then(r=>r.blob());
     document.body.appendChild(ARButton.createButton(renderer, {
-      requiredFeatures: [],
-      optionalFeatures: ["hit-test", "anchors", "dom-overlay", "image-tracking"],
+      requiredFeatures: ["image-tracking"],
+      trackedImages: [
+        {
+          image: imgBitmap,
+          widthInMeters: 0.15
+        }
+      ],
+      optionalFeatures: ["hit-test", "anchors", "dom-overlay"],
       domOverlay: { root: document.body }
     }));
   }
