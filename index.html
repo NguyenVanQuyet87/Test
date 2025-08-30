@@ -26,6 +26,7 @@
       font-size: 13px;
       border-radius: 6px;
       white-space: pre-line;
+      max-width: 80%;
     }
     #resetBtn {
       position: absolute;
@@ -41,10 +42,23 @@
       border-radius: 6px;
       cursor: pointer;
     }
+    #markerStatus {
+      position: absolute;
+      bottom: 60px;
+      left: 10px;
+      z-index: 10;
+      background: rgba(0,0,0,0.4);
+      color: white;
+      padding: 6px 8px;
+      font-family: monospace;
+      font-size: 13px;
+      border-radius: 6px;
+    }
   </style>
 </head>
 <body>
   <div id="info">Đang chờ khởi động AR...</div>
+  <div id="markerStatus">Chưa phát hiện marker</div>
   <button id="resetBtn" type="button">Reset AR</button>
   <input type="range" id="opacityControl" min="0" max="1" step="0.05" value="1">
 
@@ -54,6 +68,7 @@
   import { ARButton } from "https://esm.sh/three@0.160.0/examples/jsm/webxr/ARButton.js";
 
   const infoEl = document.getElementById("info");
+  const markerStatusEl = document.getElementById("markerStatus");
   const resetBtn = document.getElementById("resetBtn");
 
   let modelTemplate = null;
@@ -82,20 +97,26 @@
     const supported = await navigator.xr.isSessionSupported("immersive-ar");
     if (!supported) { infoEl.textContent = "Thiết bị không hỗ trợ AR."; return; }
     // Load marker image
-    const imgBitmap = await fetch("marker.png")
-      .then(r => r.blob())
-      .then(b => createImageBitmap(b));
-    document.body.appendChild(ARButton.createButton(renderer, {
-      requiredFeatures: ["image-tracking"],
-      trackedImages: [
-        {
-          image: imgBitmap,
-          widthInMeters: 0.15
-        }
-      ],
-      optionalFeatures: ["hit-test", "anchors", "dom-overlay"],
-      domOverlay: { root: document.body }
-    }));
+    try {
+      const imgBitmap = await fetch("marker.png")
+        .then(r => r.blob())
+        .then(b => createImageBitmap(b));
+      
+      document.body.appendChild(ARButton.createButton(renderer, {
+        requiredFeatures: ["image-tracking"],
+        trackedImages: [
+          {
+            image: imgBitmap,
+            widthInMeters: 0.15
+          }
+        ],
+        optionalFeatures: ["hit-test", "anchors", "dom-overlay"],
+        domOverlay: { root: document.body }
+      }));
+    } catch (e) {
+      console.error("Lỗi khi tải marker:", e);
+      infoEl.textContent = "Lỗi khi tải marker.png - vui lòng kiểm tra file và console";
+    }
   }
   initARButton();
 
@@ -112,7 +133,7 @@
   loader.load("test.glb", (gltf)=>{
     modelTemplate = gltf.scene;
     modelTemplate.scale.set(0.2,0.2,0.2);
-    infoEl.textContent = "Model đã load — di chuyển camera để tìm mặt phẳng.";
+    infoEl.textContent = "Model đã load — di chuyển camera để tìm mặt phẳng hoặc marker.";
   }, undefined, (err)=>{
     console.error("GLTF load error:", err);
     infoEl.textContent = "Lỗi load GLTF — xem console.";
@@ -212,21 +233,23 @@
     }
   });
 
-  resetBtn.addEventListener("click",()=>{ const s=renderer.xr.getSession(); if (s) s.end(); });
+  resetBtn.addEventListener("click",()=>{ 
+    const s=renderer.xr.getSession(); 
+    if (s) s.end(); 
+  });
 
   renderer.xr.addEventListener("sessionstart", async ()=>{
     const session = renderer.xr.getSession();
     infoEl.textContent = "Đã vào chế độ AR, di chuyển để quét mặt phẳng hoặc marker...";
     const viewerSpace = await session.requestReferenceSpace("viewer");
     hitTestSource = await session.requestHitTestSource({ space: viewerSpace }).catch(()=>null);
-    //if (session.updateTargetImages) {
-      //try {
-        //const img = await fetch("marker.png").then(r=>r.blob());
-        //await session.updateTargetImages([{ image: img, widthInMeters: 0.15 }]);
-        //alert("Đã đăng ký marker tracking");
-      //} catch(e) { alert("Không thể đăng ký marker:", e); }
-    //}
-    session.addEventListener("end", ()=>{ hitTestSource = null; clearAllPlacementsAndAnchors(); infoEl.textContent = "AR session đã kết thúc."; });
+    
+    session.addEventListener("end", ()=>{ 
+      hitTestSource = null; 
+      clearAllPlacementsAndAnchors(); 
+      infoEl.textContent = "AR session đã kết thúc.";
+      markerStatusEl.textContent = "Chưa phát hiện marker";
+    });
   });
 
   renderer.setAnimationLoop((t,frame)=>{
@@ -240,23 +263,49 @@
           if (pose) { reticle.visible=true; reticle.matrix.fromArray(pose.transform.matrix); }
         } else { reticle.visible=false; }
       }
-      const results = frame.getImageTrackingResults?.() || [];
-      for (const result of results) {
-        const state = result.trackingState;
-        if (state==="tracked") {
-          alert("image ok")
-          const pose = frame.getPose(result.imageSpace, refSpace);
-          if (pose) {
-            const p = pose.transform.position;
-            const q = pose.transform.orientation;
-            infoEl.textContent = 
-              `Marker tracked!\n`+
-              `Vị trí: x=${p.x.toFixed(2)}, y=${p.y.toFixed(2)}, z=${p.z.toFixed(2)}\n`+
-              `Hướng (quat): x=${q.x.toFixed(2)}, y=${q.y.toFixed(2)}, z=${q.z.toFixed(2)}, w=${q.w.toFixed(2)}`;
+      
+      // Xử lý image tracking
+      const results = frame.getImageTrackingResults ? frame.getImageTrackingResults() : [];
+      if (results.length > 0) {
+        for (const result of results) {
+          const state = result.trackingState;
+          if (state === "tracked") {
+            const pose = frame.getPose(result.imageSpace, refSpace);
+            if (pose) {
+              const p = pose.transform.position;
+              const q = pose.transform.orientation;
+              markerStatusEl.textContent = 
+                `Marker được nhận diện!\n`+
+                `Vị trí: x=${p.x.toFixed(2)}, y=${p.y.toFixed(2)}, z=${p.z.toFixed(2)}`;
+              
+              // Tự động đặt model khi phát hiện marker
+              if (!currentModel && modelTemplate) {
+                const anchor = result.createAnchor && result.createAnchor();
+                if (anchor) {
+                  clearAllPlacementsAndAnchors();
+                  const group = new THREE.Group();
+                  group.matrixAutoUpdate = false;
+                  PLACEMENTS_ROOT.add(group);
+                  
+                  const placed = cloneModel(modelTemplate);
+                  group.add(placed);
+                  currentModel = placed;
+                  
+                  // Cập nhật vị trí model dựa trên marker
+                  const matrix = new THREE.Matrix4().fromArray(pose.transform.matrix);
+                  group.matrix.copy(matrix);
+                  
+                  allAnchors.add(anchor);
+                  infoEl.textContent = "Model đã được đặt trên marker!";
+                }
+              }
+            }
+          } else {
+            markerStatusEl.textContent = `Marker trạng thái: ${state}`;
           }
-        } else {
-          alert("image not OK")
         }
+      } else {
+        markerStatusEl.textContent = "Chưa phát hiện marker";
       }
     }
     renderer.render(scene,camera);
