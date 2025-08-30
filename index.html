@@ -315,8 +315,7 @@
     currentModel = null;
   }
 
- // ========== PHẦN CODE SỬA ĐỔI QUAN TRỌNG ==========
-  // Hàm đặt mô hình lên marker với hướng trục X trùng với pháp tuyến của marker
+    // Hàm đặt mô hình lên marker với hướng trục X trùng với pháp tuyến của marker
   function placeModelOnMarker(pose) {
     if (!modelTemplate || isPlacing) return;
     
@@ -344,19 +343,6 @@
     // Đảm bảo trục X của mô hình trùng với hướng pháp tuyến của marker
     const adjustedMatrix = new THREE.Matrix4();
     adjustedMatrix.makeBasis(xAxis, yAxis, zAxis);
-    
-    // ========== BỔ SUNG: XOAY MÔ HÌNH ĐỂ TRỤC X TRÙNG VỚI PHÁP TUYẾN ==========
-    // Hiện tại trục Z đang là pháp tuyến, cần xoay để trục X trở thành pháp tuyến
-    // Thực hiện phép quay -90 độ quanh trục Y để chuyển trục Z thành trục X
-    const rotationCorrection = new THREE.Matrix4().makeRotationY(-Math.PI / 2);
-    adjustedMatrix.multiply(rotationCorrection);
-    
-    // Thực hiện thêm phép quay 180 độ quanh trục X để đảm bảo chiều dương của trục X
-    // là chiều nhìn vào marker (thay vì nhìn ra ngoài)
-    const flipRotation = new THREE.Matrix4().makeRotationX(Math.PI);
-    adjustedMatrix.multiply(flipRotation);
-    // ========== KẾT THÚC PHẦN BỔ SUNG ==========
-    
     adjustedMatrix.setPosition(position);
     
     // Áp dụng ma trận đã điều chỉnh
@@ -383,7 +369,6 @@
     // Ẩn hiệu ứng quét sau khi đặt model
     hideQRFrame();
   }
-  // ========== KẾT THÚC PHẦN CODE SỬA ĐỔI ==========
     
   // --- orientation helpers ---
   let _lastHDir = new THREE.Vector3(1, 0, 0);
