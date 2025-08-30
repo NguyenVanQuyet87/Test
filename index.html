@@ -2,10 +2,10 @@
 <html lang="vi">
 <head>
   <meta charset="utf-8" />
-  <title>WebXR AR với Marker Tracking và Điểm đặt tùy chỉnh</title>
+  <title>WebXR AR với Marker Tracking và Hiệu Ứng Quét</title>
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <style>
-    body { margin: 0; overflow: hidden; font-family: Arial, sans-serif; }
+    body { margin: 0; overflow: hidden; }
     canvas { display: block; }
     #opacityControl {
       position: absolute;
@@ -13,20 +13,20 @@
       left: 50%;
       transform: translateX(-50%);
       z-index: 10;
-      width: 80%;
-      max-width: 300px;
     }
     #info {
       position: absolute;
       top: 10px;
       left: 10px;
       z-index: 10;
-      background: rgba(0,0,0,0.7);
+      background: rgba(0,0,0,0.4);
       color: white;
-      padding: 12px;
-      font-size: 14px;
-      border-radius: 8px;
-      max-width: 300px;
+      padding: 6px 8px;
+      font-family: monospace;
+      font-size: 13px;
+      border-radius: 6px;
+      white-space: pre-line;
+      max-width: 80%;
     }
     #resetBtn {
       position: absolute;
@@ -35,23 +35,24 @@
       z-index: 10;
       background: rgba(255,255,255,0.9);
       color: #111;
-      padding: 8px 16px;
-      font-size: 14px;
+      padding: 6px 10px;
+      font-family: system-ui, sans-serif;
+      font-size: 13px;
       border: 1px solid #ccc;
       border-radius: 6px;
       cursor: pointer;
     }
     #markerStatus {
       position: absolute;
-      top: 150px;
+      bottom: 60px;
       left: 10px;
       z-index: 10;
-      background: rgba(0,0,0,0.7);
+      background: rgba(0,0,0,0.4);
       color: white;
-      padding: 12px;
-      font-size: 14px;
-      border-radius: 8px;
-      max-width: 300px;
+      padding: 6px 8px;
+      font-family: monospace;
+      font-size: 13px;
+      border-radius: 6px;
     }
     #placementBtn {
       position: absolute;
@@ -61,25 +62,12 @@
       background: rgba(255,255,255,0.9);
       color: #111;
       padding: 8px 12px;
+      font-family: system-ui, sans-serif;
       font-size: 13px;
       border: 1px solid #ccc;
       border-radius: 6px;
       cursor: pointer;
       display: none;
-    }
-    .instructions {
-      position: absolute;
-      bottom: 60px;
-      left: 50%;
-      transform: translateX(-50%);
-      z-index: 10;
-      background: rgba(0,0,0,0.7);
-      color: white;
-      padding: 12px;
-      border-radius: 8px;
-      text-align: center;
-      width: 80%;
-      max-width: 400px;
     }
     /* Hiệu ứng quét QR code */
     #markerOverlay {
@@ -159,7 +147,6 @@
   <button id="resetBtn" type="button">Reset AR</button>
   <button id="placementBtn" type="button">Đặt mô hình</button>
   <input type="range" id="opacityControl" min="0" max="1" step="0.05" value="1">
-  <div class="instructions">Hướng camera về phía marker để kích hoạt mô hình 3D</div>
   
   <!-- Overlay hiệu ứng quét QR code -->
   <div id="markerOverlay">
@@ -195,7 +182,6 @@
   let isPlacing = false;
   let markerDetected = false;
   let markerPose = null;
-  let currentMarkerId = null;
   const allAnchors = new Set();
 
   const scene = new THREE.Scene();
@@ -207,33 +193,6 @@
 
   const PLACEMENTS_ROOT = new THREE.Group();
   scene.add(PLACEMENTS_ROOT);
-
-  // ========== PHẦN CODE BỔ SUNG: CẤU HÌNH ĐIỂM ĐẶT THEO MARKER ID ==========
-  // Cấu hình điểm đặt mô hình cho từng marker ID
-  const markerPlacementConfigs = {
-    // Marker mặc định (nếu không có config riêng)
-    'default': {
-      offset: new THREE.Vector3(0, 0, 0), // Điểm đặt mặc định (gốc tọa độ mô hình)
-      rotation: new THREE.Euler(0, 0, 0)   // Xoay mặc định
-    },
-    // Marker có ID là 'marker-special-1'
-    'marker-special-1': {
-      offset: new THREE.Vector3(0, 0.1, 0), // Dịch lên trên 0.1 đơn vị
-      rotation: new THREE.Euler(0, Math.PI/2, 0) // Xoay 90 độ quanh trục Y
-    },
-    // Marker có ID là 'marker-special-2'
-    'marker-special-2': {
-      offset: new THREE.Vector3(0.2, 0, 0), // Dịch sang phải 0.2 đơn vị
-      rotation: new THREE.Euler(Math.PI/4, 0, 0) // Xoay 45 độ quanh trục X
-    }
-    // Có thể thêm các marker khác tại đây
-  };
-
-  // Hàm lấy cấu hình điểm đặt dựa trên marker ID
-  function getPlacementConfig(markerId) {
-    return markerPlacementConfigs[markerId] || markerPlacementConfigs['default'];
-  }
-  // ========== KẾT THÚC PHẦN CODE BỔ SUNG ==========
 
   // Hàm cập nhật vị trí và kích thước của hiệu ứng quét QR dựa trên vị trí marker
   function updateQRFramePosition(pose) {
@@ -273,45 +232,16 @@
   }
 
   async function initARButton() {
-    if (!("xr" in navigator)) { 
-      infoEl.textContent = "Trình duyệt không hỗ trợ WebXR. Hãy thử dùng Chrome trên Android."; 
-      return; 
-    }
-    
+    if (!("xr" in navigator)) { infoEl.textContent = "Trình duyệt không hỗ trợ WebXR."; return; }
     const supported = await navigator.xr.isSessionSupported("immersive-ar");
-    if (!supported) { 
-      infoEl.textContent = "Thiết bị không hỗ trợ AR."; 
-      return; 
-    }
-    
+    if (!supported) { infoEl.textContent = "Thiết bị không hỗ trợ AR."; return; }
+    // Load marker image
     try {
-      // Tạo marker ảo để test (thay thế bằng marker thật của bạn)
-      const canvas = document.createElement('canvas');
-      canvas.width = 300;
-      canvas.height = 300;
-      const ctx = canvas.getContext('2d');
+      const imgBitmap = await fetch("marker.png")
+        .then(r => r.blob())
+        .then(b => createImageBitmap(b));
       
-      // Vẽ marker mẫu (hình tròn với chữ thập ở giữa)
-      ctx.fillStyle = 'white';
-      ctx.fillRect(0, 0, 300, 300);
-      
-      ctx.fillStyle = 'black';
-      ctx.beginPath();
-      ctx.arc(150, 150, 120, 0, Math.PI * 2);
-      ctx.fill();
-      
-      ctx.strokeStyle = 'white';
-      ctx.lineWidth = 10;
-      ctx.beginPath();
-      ctx.moveTo(150, 50);
-      ctx.lineTo(150, 250);
-      ctx.moveTo(50, 150);
-      ctx.lineTo(250, 150);
-      ctx.stroke();
-      
-      const imgBitmap = await createImageBitmap(canvas);
-      
-      const arButton = ARButton.createButton(renderer, {
+      document.body.appendChild(ARButton.createButton(renderer, {
         requiredFeatures: ["image-tracking"],
         trackedImages: [
           {
@@ -321,19 +251,16 @@
         ],
         optionalFeatures: ["hit-test", "anchors", "dom-overlay"],
         domOverlay: { root: document.body }
-      });
-      
-      document.body.appendChild(arButton);
-    } catch (error) {
-      console.error("Lỗi khi khởi tạo AR:", error);
-      infoEl.textContent = "Lỗi khi khởi tạo AR: " + error.message;
+      }));
+    } catch (e) {
+      console.error("Lỗi khi tải marker:", e);
+      infoEl.textContent = "Lỗi khi tải marker.png - vui lòng kiểm tra file và console";
     }
   }
   initARButton();
 
   scene.add(new THREE.HemisphereLight(0xffffff, 0xbbbbff, 1));
 
-  // Tạo reticle (vòng tròn định vị)
   const ringGeo = new THREE.RingGeometry(0.08,0.1,32).rotateX(-Math.PI/2);
   const ringMat = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
   reticle = new THREE.Mesh(ringGeo, ringMat);
@@ -356,7 +283,7 @@
   loader.load("test.glb", (gltf)=>{
     modelTemplate = gltf.scene;
     modelTemplate.scale.set(0.2,0.2,0.2);
-    infoEl.textContent = "Model đã load — di chuyển camera để tìm marker.";
+    infoEl.textContent = "Model đã load — di chuyển camera để tìm mặt phẳng hoặc marker.";
   }, undefined, (err)=>{
     console.error("GLTF load error:", err);
     infoEl.textContent = "Lỗi load GLTF — tạo model mẫu thay thế.";
@@ -388,9 +315,8 @@
     currentModel = null;
   }
 
-  // ========== PHẦN CODE BỔ SUNG: CẬP NHẬT HÀM ĐẶT MÔ HÌNH ==========
-  // Hàm đặt mô hình lên marker với điểm đặt tùy chỉnh
-  function placeModelOnMarker(pose, markerId = null) {
+  // Hàm đặt mô hình lên marker với hướng trục X trùng với pháp tuyến của marker
+  function placeModelOnMarker(pose) {
     if (!modelTemplate || isPlacing) return;
     
     isPlacing = true;
@@ -408,38 +334,19 @@
     const scale = new THREE.Vector3();
     matrix.decompose(position, quaternion, scale);
     
-    // Lấy cấu hình điểm đặt dựa trên marker ID
-    const config = getPlacementConfig(markerId);
-    
     // Tạo bộ ba vector trục từ quaternion
     const xAxis = new THREE.Vector3(1, 0, 0).applyQuaternion(quaternion);
     const yAxis = new THREE.Vector3(0, 1, 0).applyQuaternion(quaternion);
     const zAxis = new THREE.Vector3(0, 0, 1).applyQuaternion(quaternion);
     
     // Tạo ma trận mới với hướng đã điều chỉnh
+    // Đảm bảo trục X của mô hình trùng với hướng pháp tuyến của marker
     const adjustedMatrix = new THREE.Matrix4();
     adjustedMatrix.makeBasis(xAxis, yAxis, zAxis);
-    
-    // Áp dụng offset điểm đặt từ cấu hình
-    const offsetPosition = position.clone();
-    if (config.offset) {
-      // Chuyển đổi offset từ không gian local sang world space
-      const offsetWorld = config.offset.clone();
-      offsetWorld.applyMatrix4(adjustedMatrix);
-      offsetPosition.add(offsetWorld);
-    }
-    
-    adjustedMatrix.setPosition(offsetPosition);
+    adjustedMatrix.setPosition(position);
     
     // Áp dụng ma trận đã điều chỉnh
     group.matrix.copy(adjustedMatrix);
-    
-    // Áp dụng rotation bổ sung từ cấu hình
-    if (config.rotation) {
-      group.rotation.x = config.rotation.x;
-      group.rotation.y = config.rotation.y;
-      group.rotation.z = config.rotation.z;
-    }
     
     PLACEMENTS_ROOT.add(group);
     
@@ -455,14 +362,71 @@
       }).catch(console.error);
     }
     
-    infoEl.textContent = `Model đã được đặt trên marker${markerId ? ' ' + markerId : ''}!`;
+    infoEl.textContent = "Model đã được đặt trên marker! Trục X trùng với pháp tuyến marker.";
     isPlacing = false;
     markerDetected = false;
     
     // Ẩn hiệu ứng quét sau khi đặt model
     hideQRFrame();
   }
-  // ========== KẾT THÚC PHẦN CODE BỔ SUNG ==========
+
+  // --- orientation helpers ---
+  let _lastHDir = new THREE.Vector3(1, 0, 0);
+  function getCameraHorizontalDir() {
+    const fwd = new THREE.Vector3();
+    camera.getWorldDirection(fwd);
+    fwd.y = 0;
+    const len = fwd.length();
+    if (len < 1e-3) return _lastHDir.clone();
+    fwd.divideScalar(len);
+    _lastHDir.copy(fwd);
+    return fwd;
+  }
+
+  function computePlacementMatrixFromMatrix(baseMatrix) {
+    const poseMat = new THREE.Matrix4().copy(baseMatrix);
+    const rotMat = new THREE.Matrix4().extractRotation(poseMat);
+    const normal = new THREE.Vector3(0,1,0).applyMatrix4(rotMat).normalize();
+    const camH = getCameraHorizontalDir();
+    const camProj = camH.clone().projectOnPlane(normal);
+    if (camProj.length() < 1e-3) {
+      camProj.copy(_lastHDir).projectOnPlane(normal);
+      if (camProj.length() < 1e-3) camProj.set(1,0,0);
+    }
+    camProj.normalize();
+    const xAxis = camProj.clone();
+    const yAxis = normal.clone().normalize();
+    const zAxis = new THREE.Vector3().crossVectors(yAxis, xAxis).normalize();
+    const basis = new THREE.Matrix4().makeBasis(xAxis, yAxis, zAxis);
+    const pos = new THREE.Vector3().setFromMatrixPosition(poseMat);
+    basis.setPosition(pos);
+    return basis;
+  }
+
+  async function placeAnchorFromLastHit() {
+    if (isPlacing) return;
+    isPlacing = true;
+    const hit = lastHitResult;
+    const refSpace = renderer.xr.getReferenceSpace();
+    if (!hit || !refSpace || !modelTemplate) { isPlacing=false; return; }
+    clearAllPlacementsAndAnchors();
+    const pose = hit.getPose(refSpace);
+    const anchor = await hit.createAnchor?.(refSpace).catch(()=>null);
+    const group = new THREE.Group();
+    group.matrixAutoUpdate=false;
+    if (pose) {
+      // dùng orientation helper để đặt matrix
+      const placementMatrix = computePlacementMatrixFromMatrix(new THREE.Matrix4().fromArray(pose.transform.matrix));
+      group.matrix.copy(placementMatrix);
+    }
+    PLACEMENTS_ROOT.add(group);
+    const placed = cloneModel(modelTemplate);
+    group.add(placed);
+    currentModel = placed;
+    currentAnchor = { anchor, group };
+    if (anchor) allAnchors.add(anchor);
+    isPlacing=false;
+  }
 
   const controller = renderer.xr.getController(0);
   controller.addEventListener("select", ()=>{ if (reticle.visible) placeAnchorFromLastHit(); });
@@ -475,7 +439,7 @@
 
   placementBtn.addEventListener("click", ()=>{
     if (markerPose) {
-      placeModelOnMarker(markerPose, currentMarkerId);
+      placeModelOnMarker(markerPose);
       placementBtn.style.display = 'none';
     }
   });
@@ -495,7 +459,7 @@
 
   renderer.xr.addEventListener("sessionstart", async ()=>{
     const session = renderer.xr.getSession();
-    infoEl.textContent = "Đã vào chế độ AR, di chuyển để quét marker...";
+    infoEl.textContent = "Đã vào chế độ AR, di chuyển để quét mặt phẳng hoặc marker...";
     const viewerSpace = await session.requestReferenceSpace("viewer");
     hitTestSource = await session.requestHitTestSource({ space: viewerSpace }).catch(()=>null);
     
@@ -531,17 +495,8 @@
             const pose = frame.getPose(result.imageSpace, refSpace);
             if (pose) {
               const p = pose.transform.position;
-              
-              // ========== PHẦN CODE BỔ SUNG: LẤY ID CỦA MARKER ==========
-              // Trong thực tế, bạn cần xác định ID marker từ dữ liệu marker
-              // Ở đây giả sử chúng ta có thể lấy ID từ một thuộc tính của result
-              // Nếu không có, sử dụng ID mặc định
-              const markerId = result.id || 'default';
-              currentMarkerId = markerId;
-              // ========== KẾT THÚC PHẦN CODE BỔ SUNG ==========
-              
               markerStatusEl.textContent = 
-                `Marker được nhận diện! ID: ${markerId}\n`+
+                `Marker được nhận diện!\n`+
                 `Vị trí: x=${p.x.toFixed(2)}, y=${p.y.toFixed(2)}, z=${p.z.toFixed(2)}`;
               
               // Cập nhật hiệu ứng quét QR tại vị trí marker
@@ -559,7 +514,7 @@
                 // Tự động đặt mô hình sau 2 giây
                 setTimeout(() => {
                   if (markerDetected && markerPose) {
-                    placeModelOnMarker(markerPose, currentMarkerId);
+                    placeModelOnMarker(markerPose);
                     placementBtn.style.display = 'none';
                   }
                 }, 2000);
