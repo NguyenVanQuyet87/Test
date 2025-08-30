@@ -315,7 +315,8 @@
     currentModel = null;
   }
 
-  // Hàm đặt mô hình lên marker với hướng trục X trùng với pháp tuyến của marker
+  // ========== PHẦN CODE SỬA ĐỔI QUAN TRỌNG ==========
+  // Hàm đặt mô hình lên marker với hướng trục X vuông góc với marker
   function placeModelOnMarker(pose) {
     if (!modelTemplate || isPlacing) return;
     
@@ -335,14 +336,42 @@
     matrix.decompose(position, quaternion, scale);
     
     // Tạo bộ ba vector trục từ quaternion
+    // Lưu ý: Đối với marker, trục Z thường là pháp tuyến (vuông góc với mặt phẳng marker)
     const xAxis = new THREE.Vector3(1, 0, 0).applyQuaternion(quaternion);
     const yAxis = new THREE.Vector3(0, 1, 0).applyQuaternion(quaternion);
-    const zAxis = new THREE.Vector3(0, 0, 1).applyQuaternion(quaternion);
+    const zAxis = new THREE.Vector3(0, 0, 1).applyQuaternion(quaternion); // Đây là pháp tuyến của marker
+    
+    // Để trục X của mô hình vuông góc với marker, chúng ta cần sử dụng pháp tuyến (zAxis) làm trục X
+    // và điều chỉnh các trục còn lại cho phù hợp
+    const normal = zAxis.clone().normalize(); // Pháp tuyến của marker
+    
+    // Tìm hướng ngang của camera và chiếu nó lên mặt phẳng marker
+    const cameraDir = new THREE.Vector3();
+    camera.getWorldDirection(cameraDir);
+    cameraDir.y = 0;
+    cameraDir.normalize();
+    
+    // Chiếu hướng camera lên mặt phẳng marker
+    const projectedCameraDir = cameraDir.clone().projectOnPlane(normal).normalize();
+    
+    // Nếu chiếu ra vector gần bằng 0, sử dụng một hướng mặc định
+    if (projectedCameraDir.length() < 0.001) {
+      projectedCameraDir.set(1, 0, 0).projectOnPlane(normal).normalize();
+    }
+    
+    // Tạo các trục mới:
+    // Trục X mới là pháp tuyến của marker (vuông góc với mặt phẳng marker)
+    const newX = normal.clone();
+    
+    // Trục Z mới là hướng ngang (vuông góc với pháp tuyến và hướng lên trên)
+    const newZ = projectedCameraDir.clone();
+    
+    // Trục Y mới là tích có hướng của Z và X để đảm bảo hệ trục vuông góc
+    const newY = new THREE.Vector3().crossVectors(newZ, newX).normalize();
     
     // Tạo ma trận mới với hướng đã điều chỉnh
-    // Đảm bảo trục X của mô hình trùng với hướng pháp tuyến của marker
     const adjustedMatrix = new THREE.Matrix4();
-    adjustedMatrix.makeBasis(xAxis, yAxis, zAxis);
+    adjustedMatrix.makeBasis(newX, newY, newZ);
     adjustedMatrix.setPosition(position);
     
     // Áp dụng ma trận đã điều chỉnh
@@ -362,13 +391,14 @@
       }).catch(console.error);
     }
     
-    infoEl.textContent = "Model đã được đặt trên marker! Trục X trùng với pháp tuyến marker.";
+    infoEl.textContent = "Model đã được đặt trên marker! Trục X vuông góc với marker.";
     isPlacing = false;
     markerDetected = false;
     
     // Ẩn hiệu ứng quét sau khi đặt model
     hideQRFrame();
   }
+  // ========== KẾT THÚC PHẦN CODE SỬA ĐỔI ==========
 
   // --- orientation helpers ---
   let _lastHDir = new THREE.Vector3(1, 0, 0);
