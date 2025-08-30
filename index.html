@@ -99,7 +99,7 @@
   scene.add(reticle);
 
   const loader = new GLTFLoader();
-  loader.load("TD3500.glb", (gltf)=>{
+  loader.load("test.glb", (gltf)=>{
     modelTemplate = gltf.scene;
     modelTemplate.scale.set(0.2,0.2,0.2);
     infoEl.textContent = "Model đã load — di chuyển camera để tìm mặt phẳng.";
