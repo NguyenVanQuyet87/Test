@@ -244,6 +244,7 @@
       for (const result of results) {
         const state = result.trackingState;
         if (state==="tracked") {
+          alert("image ok")
           const pose = frame.getPose(result.imageSpace, refSpace);
           if (pose) {
             const p = pose.transform.position;
@@ -253,6 +254,8 @@
               `Vị trí: x=${p.x.toFixed(2)}, y=${p.y.toFixed(2)}, z=${p.z.toFixed(2)}\n`+
               `Hướng (quat): x=${q.x.toFixed(2)}, y=${q.y.toFixed(2)}, z=${q.z.toFixed(2)}, w=${q.w.toFixed(2)}`;
           }
+        } else {
+          alert("image not OK")
         }
       }
     }
