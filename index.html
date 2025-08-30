@@ -81,7 +81,10 @@
     if (!("xr" in navigator)) { infoEl.textContent = "Trình duyệt không hỗ trợ WebXR."; return; }
     const supported = await navigator.xr.isSessionSupported("immersive-ar");
     if (!supported) { infoEl.textContent = "Thiết bị không hỗ trợ AR."; return; }
-    const imgBitmap = await fetch("marker.png").then(r=>r.blob());
+    // Load marker image
+    const imgBitmap = await fetch("marker.png")
+      .then(r => r.blob())
+      .then(b => createImageBitmap(b));
     document.body.appendChild(ARButton.createButton(renderer, {
       requiredFeatures: ["image-tracking"],
       trackedImages: [
