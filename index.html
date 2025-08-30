@@ -219,13 +219,13 @@
     infoEl.textContent = "Đã vào chế độ AR, di chuyển để quét mặt phẳng hoặc marker...";
     const viewerSpace = await session.requestReferenceSpace("viewer");
     hitTestSource = await session.requestHitTestSource({ space: viewerSpace }).catch(()=>null);
-    if (session.updateTargetImages) {
-      try {
-        const img = await fetch("marker.png").then(r=>r.blob());
-        await session.updateTargetImages([{ image: img, widthInMeters: 0.15 }]);
-        alert("Đã đăng ký marker tracking");
-      } catch(e) { alert("Không thể đăng ký marker:", e); }
-    }
+    //if (session.updateTargetImages) {
+      //try {
+        //const img = await fetch("marker.png").then(r=>r.blob());
+        //await session.updateTargetImages([{ image: img, widthInMeters: 0.15 }]);
+        //alert("Đã đăng ký marker tracking");
+      //} catch(e) { alert("Không thể đăng ký marker:", e); }
+    //}
     session.addEventListener("end", ()=>{ hitTestSource = null; clearAllPlacementsAndAnchors(); infoEl.textContent = "AR session đã kết thúc."; });
   });
 
