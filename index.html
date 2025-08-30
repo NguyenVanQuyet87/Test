@@ -315,8 +315,8 @@
     currentModel = null;
   }
 
-  // Hàm đặt mô hình lên marker với hướng trục X trùng với pháp tuyến của marker
-  function placeModelOnMarker(pose) {
+  // Hàm đặt mô hình lên marker với điểm đặt tùy chỉnh và hướng trục X vuông góc với marker
+  function placeModelOnMarker(pose, markerId = null) {
     if (!modelTemplate || isPlacing) return;
     
     isPlacing = true;
@@ -334,19 +334,55 @@
     const scale = new THREE.Vector3();
     matrix.decompose(position, quaternion, scale);
     
-    // Tạo bộ ba vector trục từ quaternion
-    const xAxis = new THREE.Vector3(1, 0, 0).applyQuaternion(quaternion);
-    const yAxis = new THREE.Vector3(0, 1, 0).applyQuaternion(quaternion);
-    const zAxis = new THREE.Vector3(0, 0, 1).applyQuaternion(quaternion);
+    // Lấy cấu hình điểm đặt dựa trên marker ID
+    const config = getPlacementConfig(markerId);
+    
+    // Xác định pháp tuyến của marker (trục Z trong hệ tọa độ marker)
+    // Trong hệ tọa độ marker, trục Z thường là pháp tuyến (vuông góc với mặt phẳng marker)
+    const normal = new THREE.Vector3(0, 0, 1).applyQuaternion(quaternion).normalize();
+    
+    // Xác định hướng từ camera đến marker
+    const cameraToMarker = new THREE.Vector3().subVectors(position, camera.position).normalize();
+    
+    // Tính toán hướng ngang (vuông góc với pháp tuyến và hướng lên trên)
+    // Sử dụng tích có hướng để tìm vector vuông góc với pháp tuyến
+    const upVector = new THREE.Vector3(0, 1, 0);
+    let rightVector = new THREE.Vector3().crossVectors(upVector, normal).normalize();
+    
+    // Nếu vector right gần bằng 0 (khi normal gần như thẳng đứng), sử dụng một hướng khác
+    if (rightVector.length() < 0.001) {
+      rightVector = new THREE.Vector3(1, 0, 0);
+    }
+    
+    // Tính forward vector (vuông góc với normal và right)
+    const forwardVector = new THREE.Vector3().crossVectors(normal, rightVector).normalize();
     
     // Tạo ma trận mới với hướng đã điều chỉnh
-    // Đảm bảo trục X của mô hình trùng với hướng pháp tuyến của marker
+    // Trục X của mô hình sẽ là forwardVector (hướng về phía trước)
+    // Trục Y của mô hình sẽ là normal (pháp tuyến của marker, hướng lên trên)
+    // Trục Z của mô hình sẽ là rightVector (hướng sang phải)
     const adjustedMatrix = new THREE.Matrix4();
-    adjustedMatrix.makeBasis(xAxis, yAxis, zAxis);
-    adjustedMatrix.setPosition(position);
+    adjustedMatrix.makeBasis(forwardVector, normal, rightVector);
+    
+    // Áp dụng offset điểm đặt từ cấu hình
+    const offsetPosition = position.clone();
+    if (config.offset) {
+      // Chuyển đổi offset từ không gian local sang world space
+      const offsetWorld = config.offset.clone();
+      offsetWorld.applyMatrix4(adjustedMatrix);
+      offsetPosition.add(offsetWorld);
+    }
+    
+    adjustedMatrix.setPosition(offsetPosition);
     
     // Áp dụng ma trận đã điều chỉnh
     group.matrix.copy(adjustedMatrix);
+    
+    // Áp dụng rotation bổ sung từ cấu hình
+    if (config.rotation) {
+      const rotationMatrix = new THREE.Matrix4().makeRotationFromEuler(config.rotation);
+      group.matrix.multiply(rotationMatrix);
+    }
     
     PLACEMENTS_ROOT.add(group);
     
@@ -362,13 +398,15 @@
       }).catch(console.error);
     }
     
-    infoEl.textContent = "Model đã được đặt trên marker! Trục X trùng với pháp tuyến marker.";
+    infoEl.textContent = `Model đã được đặt trên marker${markerId ? ' ' + markerId : ''}! Trục X vuông góc với marker.`;
     isPlacing = false;
     markerDetected = false;
     
     // Ẩn hiệu ứng quét sau khi đặt model
     hideQRFrame();
   }
+  // ========== KẾT THÚC PHẦN CODE SỬA ĐỔI ==========
+    
 
   // --- orientation helpers ---
   let _lastHDir = new THREE.Vector3(1, 0, 0);
