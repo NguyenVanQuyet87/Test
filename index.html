@@ -315,7 +315,7 @@
     currentModel = null;
   }
 
-  // Hàm đặt mô hình lên marker
+  // Hàm đặt mô hình lên marker với hướng trục X trùng với pháp tuyến của marker
   function placeModelOnMarker(pose) {
     if (!modelTemplate || isPlacing) return;
     
@@ -327,7 +327,26 @@
     
     // Sử dụng ma trận từ pose của marker
     const matrix = new THREE.Matrix4().fromArray(pose.transform.matrix);
-    group.matrix.copy(matrix);
+    
+    // Phân rã ma trận để lấy vị trí và hướng
+    const position = new THREE.Vector3();
+    const quaternion = new THREE.Quaternion();
+    const scale = new THREE.Vector3();
+    matrix.decompose(position, quaternion, scale);
+    
+    // Tạo bộ ba vector trục từ quaternion
+    const xAxis = new THREE.Vector3(1, 0, 0).applyQuaternion(quaternion);
+    const yAxis = new THREE.Vector3(0, 1, 0).applyQuaternion(quaternion);
+    const zAxis = new THREE.Vector3(0, 0, 1).applyQuaternion(quaternion);
+    
+    // Tạo ma trận mới với hướng đã điều chỉnh
+    // Đảm bảo trục X của mô hình trùng với hướng pháp tuyến của marker
+    const adjustedMatrix = new THREE.Matrix4();
+    adjustedMatrix.makeBasis(xAxis, yAxis, zAxis);
+    adjustedMatrix.setPosition(position);
+    
+    // Áp dụng ma trận đã điều chỉnh
+    group.matrix.copy(adjustedMatrix);
     
     PLACEMENTS_ROOT.add(group);
     
@@ -343,7 +362,7 @@
       }).catch(console.error);
     }
     
-    infoEl.textContent = "Model đã được đặt trên marker!";
+    infoEl.textContent = "Model đã được đặt trên marker! Trục X trùng với pháp tuyến marker.";
     isPlacing = false;
     markerDetected = false;
     
