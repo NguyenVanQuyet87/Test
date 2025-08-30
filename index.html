@@ -342,7 +342,7 @@
     // Tạo ma trận mới với hướng đã điều chỉnh
     // Đảm bảo trục X của mô hình trùng với hướng pháp tuyến của marker
     const adjustedMatrix = new THREE.Matrix4();
-    adjustedMatrix.makeBasis(zAxis, yAxis, xAxis);
+    adjustedMatrix.makeBasis(-zAxis, yAxis, xAxis);
     adjustedMatrix.setPosition(position);
     
     // Áp dụng ma trận đã điều chỉnh
