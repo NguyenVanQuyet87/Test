@@ -336,7 +336,7 @@
     
     // Tạo bộ ba vector trục từ quaternion
     const xAxis = new THREE.Vector3(0, 0, 1).applyQuaternion(quaternion);
-    const yAxis = new THREE.Vector3(0, -1, 0).applyQuaternion(quaternion);
+    const yAxis = new THREE.Vector3(0, 1, 0).applyQuaternion(quaternion);
     const zAxis = new THREE.Vector3(1, 0, 0).applyQuaternion(quaternion);
     
     // Tạo ma trận mới với hướng đã điều chỉnh
