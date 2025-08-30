@@ -128,7 +128,18 @@
   reticle.matrixAutoUpdate = false;
   reticle.visible = false;
   scene.add(reticle);
-
+    
+  // Tạo hình khối mẫu nếu không tải được GLTF
+  function createFallbackModel() {
+    const geometry = new THREE.BoxGeometry(0.1, 0.1, 0.1);
+    const material = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
+    const cube = new THREE.Mesh(geometry, material);
+    const group = new THREE.Group();
+    group.add(cube);
+    group.scale.set(0.2, 0.2, 0.2);
+    return group;
+  }
+    
   const loader = new GLTFLoader();
   loader.load("test.glb", (gltf)=>{
     modelTemplate = gltf.scene;
@@ -136,7 +147,8 @@
     infoEl.textContent = "Model đã load — di chuyển camera để tìm mặt phẳng hoặc marker.";
   }, undefined, (err)=>{
     console.error("GLTF load error:", err);
-    infoEl.textContent = "Lỗi load GLTF — xem console.";
+    infoEl.textContent = "Lỗi load GLTF — tạo model mẫu thay thế.";
+    modelTemplate = createFallbackModel();
   });
 
   function cloneModel(template) {
@@ -163,7 +175,40 @@
     currentAnchor = null;
     currentModel = null;
   }
-
+    
+  // Hàm đặt mô hình lên marker
+  function placeModelOnMarker(pose) {
+    if (!modelTemplate || isPlacing) return;
+    
+    isPlacing = true;
+    clearAllPlacementsAndAnchors();
+    
+    const group = new THREE.Group();
+    group.matrixAutoUpdate = false;
+    
+    // Sử dụng ma trận từ pose của marker
+    const matrix = new THREE.Matrix4().fromArray(pose.transform.matrix);
+    group.matrix.copy(matrix);
+    
+    PLACEMENTS_ROOT.add(group);
+    
+    const placed = cloneModel(modelTemplate);
+    group.add(placed);
+    currentModel = placed;
+    
+    // Tạo anchor nếu có thể
+    if (pose && pose.createAnchor) {
+      pose.createAnchor().then(anchor => {
+        currentAnchor = { anchor, group };
+        allAnchors.add(anchor);
+      }).catch(console.error);
+    }
+    
+    infoEl.textContent = "Model đã được đặt trên marker!";
+    isPlacing = false;
+    markerDetected = false;
+  }
+    
   // --- orientation helpers ---
   let _lastHDir = new THREE.Vector3(1, 0, 0);
   function getCameraHorizontalDir() {
@@ -277,35 +322,33 @@
               markerStatusEl.textContent = 
                 `Marker được nhận diện!\n`+
                 `Vị trí: x=${p.x.toFixed(2)}, y=${p.y.toFixed(2)}, z=${p.z.toFixed(2)}`;
+               // Lưu trữ pose của marker để sử dụng sau
+              markerPose = pose;
               
               // Tự động đặt model khi phát hiện marker
-              if (!currentModel && modelTemplate) {
-                const anchor = result.createAnchor && result.createAnchor();
-                if (anchor) {
-                  clearAllPlacementsAndAnchors();
-                  const group = new THREE.Group();
-                  group.matrixAutoUpdate = false;
-                  PLACEMENTS_ROOT.add(group);
-                  
-                  const placed = cloneModel(modelTemplate);
-                  group.add(placed);
-                  currentModel = placed;
-                  
-                  // Cập nhật vị trí model dựa trên marker
-                  const matrix = new THREE.Matrix4().fromArray(pose.transform.matrix);
-                  group.matrix.copy(matrix);
-                  
-                  allAnchors.add(anchor);
-                  infoEl.textContent = "Model đã được đặt trên marker!";
-                }
-              }
+              if (!currentModel && modelTemplate && !markerDetected) {
+                markerDetected = true;
+                placementBtn.style.display = 'block';
+                placementBtn.textContent = 'Đặt mô hình lên marker';
+                
+                // Tự động đặt mô hình sau 2 giây
+                setTimeout(() => {
+                  if (markerDetected && markerPose) {
+                    placeModelOnMarker(markerPose);
+                    placementBtn.style.display = 'none';
+                  }
+                }, 2000);
             }
           } else {
             markerStatusEl.textContent = `Marker trạng thái: ${state}`;
+            markerDetected = false;
+            placementBtn.style.display = 'none';
           }
         }
       } else {
         markerStatusEl.textContent = "Chưa phát hiện marker";
+        markerDetected = false;
+        placementBtn.style.display = 'none';
       }
     }
     renderer.render(scene,camera);
