@@ -557,16 +557,16 @@ function computePlacementMatrixFromMatrix(baseMatrix) {
       return allHits[0];
     } else {
     // fallback: kiểm tra nếu camera ở trong bounding box
-      for (let obj of scene.children) {
-        if (obj.isMesh) {
-          obj.geometry.computeBoundingBox();
-          const box = obj.geometry.boundingBox.clone();
-          box.applyMatrix4(obj.matrixWorld);
-          if (box.containsPoint(camera.position)) {
-            return obj; // chọn object mà camera đang ở trong
-          }
-        }
-      }
+      //for (let obj of scene.children) {
+        //if (obj.isMesh) {
+          //obj.geometry.computeBoundingBox();
+          //const box = obj.geometry.boundingBox.clone();
+          //box.applyMatrix4(obj.matrixWorld);
+          //if (box.containsPoint(camera.position)) {
+            //return obj; // chọn object mà camera đang ở trong
+          //}
+        //}
+      //}
     }
     return null;
   }
