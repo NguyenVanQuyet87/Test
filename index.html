@@ -283,6 +283,7 @@
   loader.load("test.glb", (gltf)=>{
     modelTemplate = gltf.scene;
     modelTemplate.scale.set(0.2,0.2,0.2);
+    console.log(gltf.scene)
     infoEl.textContent = "Model đã load — di chuyển camera để tìm mặt phẳng hoặc marker.";
   }, undefined, (err)=>{
     console.error("GLTF load error:", err);
@@ -400,12 +401,12 @@ function placeModelOnMarker(pose) {
 
 // Hàm debug để hiển thị các trục
 function debugAxes(group, xAxis, yAxis, zAxis) {
-    const axisLength = 0.3;
+    const axisLength = 0.2;
     
     // Trục X (đỏ) - hướng vào marker
     const xGeometry = new THREE.BufferGeometry().setFromPoints([
         new THREE.Vector3(0, 0, 0),
-        new THREE.Vector3(0, 0, -axisLength)
+        new THREE.Vector3(axisLength, 0, 0,)
     ]);
     const xMaterial = new THREE.LineBasicMaterial({ color: 0xff0000 });
     const xAxisLine = new THREE.Line(xGeometry, xMaterial);
@@ -423,7 +424,7 @@ function debugAxes(group, xAxis, yAxis, zAxis) {
     // Trục Z (xanh dương) - hướng lên trên
     const zGeometry = new THREE.BufferGeometry().setFromPoints([
         new THREE.Vector3(0, 0, 0),
-        new THREE.Vector3(axisLength, 0, 0)
+        new THREE.Vector3(0, 0, axisLength)
     ]);
     const zMaterial = new THREE.LineBasicMaterial({ color: 0x0000ff });
     const zAxisLine = new THREE.Line(zGeometry, zMaterial);
@@ -437,7 +438,7 @@ function debugAxes(group, xAxis, yAxis, zAxis) {
     };
     
     const xLabel = new THREE.TextSprite(`X (into marker)`);
-    xLabel.position.set(0, 0, -axisLength-0.05);
+    xLabel.position.set(axisLength+0.05, 0, 0);
     group.add(xLabel);
     
     const yLabel = new THREE.TextSprite(`Y (left)`);
@@ -445,7 +446,7 @@ function debugAxes(group, xAxis, yAxis, zAxis) {
     group.add(yLabel);
     
     const zLabel = new THREE.TextSprite(`Z (up)`);
-    zLabel.position.set(axisLength + 0.05, 0, 0);
+    zLabel.position.set(0, 0, axisLength + 0.05);
     group.add(zLabel);
 }
     
