@@ -278,7 +278,7 @@
     group.scale.set(0.2, 0.2, 0.2);
     return group;
   }
-
+  // Hệ tọa độ của file GTLF thì trục Y sẽ hướng lên trên, trục Z hướng dọc mô hình
   const loader = new GLTFLoader();
   loader.load("test.glb", (gltf)=>{
     modelTemplate = gltf.scene;
@@ -347,7 +347,7 @@ function placeModelOnMarker(pose) {
     
     let modelXAxis = markerNormal.clone().negate();   // +X model = vào trong marker (ngược với normal)
     let modelYAxis = markerRight.clone().negate();                // +Z model = lên trên
-    let modelZAxis = markerUp.clone();                // +Z model = lên trên
+    let modelZAxis = markerUp.clone().negate();                // +Z model = lên trên
     
     // Bảo đảm trực giao/chuẩn hoá
     modelXAxis.normalize();
