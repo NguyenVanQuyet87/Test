@@ -335,37 +335,26 @@ function placeModelOnMarker(pose) {
     matrix.decompose(position, quaternion, scale);
     
     // Xác định các trục cơ sở của marker trong không gian thế giới
-    // Trong hệ tọa độ marker mặc định (theo đặc tả WebXR):
-    // - Trục Z là pháp tuyến của mặt phẳng marker (hướng ra ngoài)
-    // - Trục Y hướng lên trên theo chiều dọc của marker
-    // - Trục X hướng sang phải theo chiều ngang của marker
-    
     const markerNormal = new THREE.Vector3(0, 0, 1).applyQuaternion(quaternion);
     const markerUp = new THREE.Vector3(0, 1, 0).applyQuaternion(quaternion);
     const markerRight = new THREE.Vector3(1, 0, 0).applyQuaternion(quaternion);
     
-    // Đảo ngược hướng của normal để trỏ vào bên trong mặt phẳng marker
+    // Điều chỉnh để đáp ứng yêu cầu:
+    // - Trục X: hướng vào marker (ngược với markerNormal)
+    // - Trục Y: hướng sang trái (ngược với markerRight)
+    // - Trục Z: hướng lên trên (giữ nguyên markerUp)
     const inwardNormal = new THREE.Vector3().copy(markerNormal).negate();
-    
-    // Kiểm tra và điều chỉnh để đảm bảo hệ tọa độ thuận tay phải
-    const correctedRight = new THREE.Vector3();
-    correctedRight.crossVectors(markerUp, inwardNormal).normalize();
-    
-    // Đảm bảo các trục vuông góc với nhau
-    const correctedUp = new THREE.Vector3();
-    correctedUp.crossVectors(inwardNormal, correctedRight).normalize();
+    const leftDirection = new THREE.Vector3().copy(markerRight).negate();
+    const upwardDirection = new THREE.Vector3().copy(markerUp);
     
     // Tạo ma trận biến đổi cho mô hình
     const modelMatrix = new THREE.Matrix4();
     
-    // Thiết lập các trục cơ sở đã được hiệu chỉnh
-    // Trục X của mô hình = inwardNormal (vuông góc với marker, hướng vào trong)
-    // Trục Y của mô hình = correctedUp (hướng lên của marker)
-    // Trục Z của mô hình = correctedRight (hướng ngang của marker)
+    // Thiết lập các trục cơ sở theo yêu cầu
     modelMatrix.set(
-        inwardNormal.x, correctedUp.x, correctedRight.x, position.x,
-        inwardNormal.y, correctedUp.y, correctedRight.y, position.y,
-        inwardNormal.z, correctedUp.z, correctedRight.z, position.z,
+        inwardNormal.x, leftDirection.x, upwardDirection.x, position.x,
+        inwardNormal.y, leftDirection.y, upwardDirection.y, position.y,
+        inwardNormal.z, leftDirection.z, upwardDirection.z, position.z,
         0, 0, 0, 1
     );
     
@@ -386,7 +375,7 @@ function placeModelOnMarker(pose) {
       }).catch(console.error);
     }
     
-    infoEl.textContent = "Model đã được đặt trên marker! Trục X vuông góc với mặt phẳng marker và hướng vào trong.";
+    infoEl.textContent = "Model đã được đặt trên marker! Trục X vào marker, Y sang trái, Z lên trên.";
     isPlacing = false;
     markerDetected = false;
     
@@ -394,39 +383,63 @@ function placeModelOnMarker(pose) {
     hideQRFrame();
     
     // Debug: hiển thị các trục của marker
-    debugAxes(group, inwardNormal, correctedUp, correctedRight);
+    debugAxes(group, inwardNormal, leftDirection, upwardDirection);
 }
 
 // Hàm debug để hiển thị các trục
-function debugAxes(group, normal, up, right) {
+function debugAxes(group, xAxis, yAxis, zAxis) {
     const axisLength = 0.3;
     
-    // Trục X (đỏ) - pháp tuyến marker (hướng vào trong)
+    // Trục X (đỏ) - hướng vào marker
     const xGeometry = new THREE.BufferGeometry().setFromPoints([
         new THREE.Vector3(0, 0, 0),
         new THREE.Vector3(axisLength, 0, 0)
     ]);
     const xMaterial = new THREE.LineBasicMaterial({ color: 0xff0000 });
-    const xAxis = new THREE.Line(xGeometry, xMaterial);
-    group.add(xAxis);
+    const xAxisLine = new THREE.Line(xGeometry, xMaterial);
+    group.add(xAxisLine);
     
-    // Trục Y (xanh lá) - hướng lên marker
+    // Trục Y (xanh lá) - hướng sang trái
     const yGeometry = new THREE.BufferGeometry().setFromPoints([
         new THREE.Vector3(0, 0, 0),
         new THREE.Vector3(0, axisLength, 0)
     ]);
     const yMaterial = new THREE.LineBasicMaterial({ color: 0x00ff00 });
-    const yAxis = new THREE.Line(yGeometry, yMaterial);
-    group.add(yAxis);
+    const yAxisLine = new THREE.Line(yGeometry, yMaterial);
+    group.add(yAxisLine);
     
-    // Trục Z (xanh dương) - hướng ngang marker
+    // Trục Z (xanh dương) - hướng lên trên
     const zGeometry = new THREE.BufferGeometry().setFromPoints([
         new THREE.Vector3(0, 0, 0),
         new THREE.Vector3(0, 0, axisLength)
     ]);
     const zMaterial = new THREE.LineBasicMaterial({ color: 0x0000ff });
-    const zAxis = new THREE.Line(zGeometry, zMaterial);
-    group.add(zAxis);
+    const zAxisLine = new THREE.Line(zGeometry, zMaterial);
+    group.add(zAxisLine);
+    
+    console.log("Custom axes:");
+    console.log("X (into marker):", xAxis);
+    console.log("Y (left):", yAxis);
+    console.log("Z (up):", zAxis);
+    
+    // Thêm nhãn cho các trục
+    const labelOptions = {
+        font: '12px Arial',
+        color: 0xffffff,
+        backgroundColor: 0x000000
+    };
+    
+    const xLabel = new THREE.TextSprite(`X (into marker)`);
+    xLabel.position.set(axisLength + 0.05, 0, 0);
+    group.add(xLabel);
+    
+    const yLabel = new THREE.TextSprite(`Y (left)`);
+    yLabel.position.set(0, axisLength + 0.05, 0);
+    group.add(yLabel);
+    
+    const zLabel = new THREE.TextSprite(`Z (up)`);
+    zLabel.position.set(0, 0, axisLength + 0.05);
+    group.add(zLabel);
 }
     
   // --- orientation helpers ---
