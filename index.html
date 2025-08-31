@@ -344,22 +344,28 @@ function placeModelOnMarker(pose) {
     const markerUp = new THREE.Vector3(0, 1, 0).applyQuaternion(quaternion);
     const markerRight = new THREE.Vector3(1, 0, 0).applyQuaternion(quaternion);
     
+    // Đảo ngược hướng của normal để trỏ vào bên trong mặt phẳng marker
+    const inwardNormal = new THREE.Vector3().copy(markerNormal).negate();
+    
     // Kiểm tra và điều chỉnh để đảm bảo hệ tọa độ thuận tay phải
     const correctedRight = new THREE.Vector3();
-    correctedRight.crossVectors(markerUp, markerNormal).normalize();
+    correctedRight.crossVectors(markerUp, inwardNormal).normalize();
     
     // Đảm bảo các trục vuông góc với nhau
     const correctedUp = new THREE.Vector3();
-    correctedUp.crossVectors(markerNormal, correctedRight).normalize();
+    correctedUp.crossVectors(inwardNormal, correctedRight).normalize();
     
     // Tạo ma trận biến đổi cho mô hình
     const modelMatrix = new THREE.Matrix4();
     
     // Thiết lập các trục cơ sở đã được hiệu chỉnh
+    // Trục X của mô hình = inwardNormal (vuông góc với marker, hướng vào trong)
+    // Trục Y của mô hình = correctedUp (hướng lên của marker)
+    // Trục Z của mô hình = correctedRight (hướng ngang của marker)
     modelMatrix.set(
-        markerNormal.x, correctedUp.x, correctedRight.x, position.x,
-        markerNormal.y, correctedUp.y, correctedRight.y, position.y,
-        markerNormal.z, correctedUp.z, correctedRight.z, position.z,
+        inwardNormal.x, correctedUp.x, correctedRight.x, position.x,
+        inwardNormal.y, correctedUp.y, correctedRight.y, position.y,
+        inwardNormal.z, correctedUp.z, correctedRight.z, position.z,
         0, 0, 0, 1
     );
     
@@ -380,7 +386,7 @@ function placeModelOnMarker(pose) {
       }).catch(console.error);
     }
     
-    infoEl.textContent = "Model đã được đặt trên marker! Trục X vuông góc với mặt phẳng marker.";
+    infoEl.textContent = "Model đã được đặt trên marker! Trục X vuông góc với mặt phẳng marker và hướng vào trong.";
     isPlacing = false;
     markerDetected = false;
     
@@ -388,14 +394,14 @@ function placeModelOnMarker(pose) {
     hideQRFrame();
     
     // Debug: hiển thị các trục của marker
-    debugAxes(group, markerNormal, correctedUp, correctedRight);
+    debugAxes(group, inwardNormal, correctedUp, correctedRight);
 }
 
 // Hàm debug để hiển thị các trục
 function debugAxes(group, normal, up, right) {
     const axisLength = 0.3;
     
-    // Trục X (đỏ) - pháp tuyến marker
+    // Trục X (đỏ) - pháp tuyến marker (hướng vào trong)
     const xGeometry = new THREE.BufferGeometry().setFromPoints([
         new THREE.Vector3(0, 0, 0),
         new THREE.Vector3(axisLength, 0, 0)
@@ -421,11 +427,6 @@ function debugAxes(group, normal, up, right) {
     const zMaterial = new THREE.LineBasicMaterial({ color: 0x0000ff });
     const zAxis = new THREE.Line(zGeometry, zMaterial);
     group.add(zAxis);
-    
-    console.log("Marker axes:");
-    console.log("Normal (X):", normal);
-    console.log("Up (Y):", up);
-    console.log("Right (Z):", right);
 }
     
   // --- orientation helpers ---
