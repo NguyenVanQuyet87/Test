@@ -519,7 +519,24 @@ function computePlacementMatrixFromMatrix(baseMatrix) {
     if (s) s.end(); 
     hideQRFrame();
   });
-
+    
+  // Tạo vòng tròn focus ở giữa màn hình (chỉ để người dùng thấy)
+  const focusRing = document.createElement("div");
+  focusRing.style.position = "absolute";
+  focusRing.style.top = "50%";
+  focusRing.style.left = "50%";
+  focusRing.style.width = "30px";
+  focusRing.style.height = "30px";
+  focusRing.style.border = "2px solid red";
+  focusRing.style.borderRadius = "50%";
+  focusRing.style.transform = "translate(-50%, -50%)";
+  focusRing.style.pointerEvents = "none"; // không chặn click
+  document.body.appendChild(focusRing);
+  // Raycaster và vector chuẩn hóa tâm màn hình
+  const raycaster = new THREE.Raycaster();
+  const center = new THREE.Vector2(0, 0); // tâm NDC (-1..1)
+    
+  // Sự kiện bắt đầu vào chế độ AR  
   renderer.xr.addEventListener("sessionstart", async ()=>{
     const session = renderer.xr.getSession();
     infoEl.textContent = "Đã vào chế độ AR, di chuyển để quét mặt phẳng hoặc marker...";
@@ -598,6 +615,19 @@ function computePlacementMatrixFromMatrix(baseMatrix) {
       }
     }
     renderer.render(scene,camera);
+    // Raycast từ tâm màn hình
+    raycaster.setFromCamera(center, camera);
+    const intersects = raycaster.intersectObjects(scene.children, true);
+  
+    if (intersects.length > 0) {
+      const obj = intersects[0].object;
+  
+      // Ví dụ: đổi màu highlight
+      if (obj.material) obj.material.color.set(0xff0000);
+  
+      // Hiển thị thông tin ra thẻ div (infoEl đã có sẵn)
+      infoEl.textContent = `Chọn: ${obj.name}`;
+    }
   });
 
   renderer.domElement.addEventListener("touchstart",(e)=>{ if (e.touches.length===1) { isDragging=true; previousTouchX=e.touches[0].clientX; } });
@@ -609,7 +639,7 @@ function computePlacementMatrixFromMatrix(baseMatrix) {
     camera.updateProjectionMatrix(); 
     renderer.setSize(window.innerWidth, window.innerHeight); 
   });
-
+// Lựa chọn đối tượng trên màn hình
     window.addEventListener("click", (event) => {
   // Lấy tọa độ tap (chuẩn hóa thành NDC: -1 đến 1)
   const mouse = new THREE.Vector2(
