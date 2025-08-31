@@ -285,7 +285,8 @@
     modelTemplate.scale.set(0.2,0.2,0.2);
     // Xoay từ hệ glTF (+Y up) sang hệ WebXR
     modelTemplate.rotation.x = Math.PI / 2;
-    console.log(gltf.scene)
+    console.log(gltf.asset)
+    
     infoEl.textContent = "Model đã load — di chuyển camera để tìm mặt phẳng hoặc marker.";
   }, undefined, (err)=>{
     console.error("GLTF load error:", err);
