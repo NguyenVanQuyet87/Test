@@ -527,14 +527,39 @@ function computePlacementMatrixFromMatrix(baseMatrix) {
   focusRing.style.left = "50%";
   focusRing.style.width = "30px";
   focusRing.style.height = "30px";
-  focusRing.style.border = "2px dash white";
+  focusRing.style.border = "2px solid white";
   focusRing.style.borderRadius = "50%";
   focusRing.style.transform = "translate(-50%, -50%)";
   focusRing.style.pointerEvents = "none"; // không chặn click
   document.body.appendChild(focusRing);
   // Raycaster và vector chuẩn hóa tâm màn hình
   const raycaster = new THREE.Raycaster();
-  const center = new THREE.Vector2(0, 0); // tâm NDC (-1..1)
+  const center = new THREE.Vector2(0, 0); 
+  function getIntersects() {
+    const offsets = [
+      new THREE.Vector2(0, 0),              // tia trung tâm
+      new THREE.Vector2(0.01, 0),           // lệch phải
+      new THREE.Vector2(-0.01, 0),          // lệch trái
+      new THREE.Vector2(0, 0.01),           // lệch lên
+      new THREE.Vector2(0, -0.01)           // lệch xuống
+    ];
+  
+    let allHits = [];
+  
+    offsets.forEach(off => {
+      const ndc = new THREE.Vector2(center.x + off.x, center.y + off.y);
+      raycaster.setFromCamera(ndc, camera);
+      const hits = raycaster.intersectObjects(scene.children, true);
+      if (hits.length > 0) allHits.push(hits[0]); // lấy object gần nhất cho mỗi tia
+    });
+  
+    // chọn object gần nhất trong tất cả các tia
+    if (allHits.length > 0) {
+      allHits.sort((a, b) => a.distance - b.distance);
+      return allHits[0];
+    }
+    return null;
+  }
     
   // Sự kiện bắt đầu vào chế độ AR  
   renderer.xr.addEventListener("sessionstart", async ()=>{
@@ -613,22 +638,16 @@ function computePlacementMatrixFromMatrix(baseMatrix) {
         placementBtn.style.display = 'none';
         hideQRFrame();
       }
-      // Raycast từ tâm màn hình
-      raycaster.setFromCamera(center, camera);
-      const intersects = raycaster.intersectObjects(scene.children, true);
-    
-      if (intersects.length > 0) {
-        const obj = intersects[0].object;
-    
-        // Ví dụ: đổi màu highlight
-        if (obj.material) obj.material.color.set(0xff0000);
-    
-        // Hiển thị thông tin ra thẻ div (infoEl đã có sẵn)
-        infoEl.textContent = `Chọn: ${obj.name}`;
-      }
+
     }
     renderer.render(scene,camera);
-
+      // Raycast từ tâm màn hình
+      const hit = getIntersects();
+      if (hit) {
+        const obj = hit.object;
+        if (obj.material) obj.material.color.set(0xff0000);
+        infoEl.textContent = `Chọn: ${obj.name}`;
+      }
   });
 
   renderer.domElement.addEventListener("touchstart",(e)=>{ if (e.touches.length===1) { isDragging=true; previousTouchX=e.touches[0].clientX; } });
