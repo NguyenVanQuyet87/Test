@@ -284,7 +284,7 @@
     modelTemplate = gltf.scene;
     modelTemplate.scale.set(0.2,0.2,0.2);
     // Xoay từ hệ glTF (+Y up) sang hệ WebXR
-    modelTemplate.rotation.x = -Math.PI / 2;
+    modelTemplate.rotation.x = Math.PI / 2;
     console.log(gltf.scene)
     infoEl.textContent = "Model đã load — di chuyển camera để tìm mặt phẳng hoặc marker.";
   }, undefined, (err)=>{
@@ -337,29 +337,22 @@ function placeModelOnMarker(pose) {
     matrix.decompose(position, quaternion, scale);
     
     // Các trục trong hệ local của marker (KHÔNG PHẢI trục world)
-    const localX = new THREE.Vector3(1,0,0);
-    const localY = new THREE.Vector3(0,1,0);
-    const localZ = new THREE.Vector3(0,0,1); // <-- chọn đây là pháp tuyến local nếu convention như vậy
+    const localX = new THREE.Vector3(1,0,0); // nằm trên mặt
+    const localY = new THREE.Vector3(0,1,0); // PHÁP TUYẾN marker
+    const localZ = new THREE.Vector3(0,0,1); // nằm trên mặt
+    // Đưa sang world
+    const markerRight  = localX.clone().applyQuaternion(quaternion); // nằm ngang
+    const markerNormal = localY.clone().applyQuaternion(quaternion); // pháp tuyến mặt
+    const markerUp= localZ.clone().applyQuaternion(quaternion); // nằm ngang
     
-    // Chuyển các trục local sang world bằng quaternion (local -> world)
-    const markerRight  = localX.clone().applyQuaternion(quaternion); // X của marker trong world
-    const markerUp     = localY.clone().applyQuaternion(quaternion); // Y của marker trong world
-    const markerNormal = localZ.clone().applyQuaternion(quaternion); // Z (pháp tuyến) của marker trong world
-    
-    // Bây giờ nếu mong muốn của bạn là:
-    // - Model +X vuông góc với mặt marker và HƯỚNG VÀO marker,
-    // - Model +Y sang trái,
-    // - Model +Z lên trên,
-    
-    let modelXAxis = markerNormal.clone();   // +X model = vào trong marker (ngược với normal)
-    let modelYAxis = markerRight.clone();    // +Y model = sang trái (ngược với right)
+    let modelXAxis = markerNormal.clone().negate();   // +X model = vào trong marker (ngược với normal)
+    let modelYAxis = markerRight.clone().negate();    // +Y model = sang trái (ngược với right)
     let modelZAxis = markerUp.clone();                // +Z model = lên trên
     
     // Bảo đảm trực giao/chuẩn hoá
-    //modelXAxis.normalize();
-    //modelZAxis.normalize();
-    // recompute modelYAxis to ensure orthonormal right-hand system:
-    //modelYAxis.copy(new THREE.Vector3().crossVectors(modelZAxis, modelXAxis)).normalize();
+    modelXAxis.normalize();
+    modelZAxis.normalize();
+    modelYAxis.copy(new THREE.Vector3().crossVectors(modelZAxis, modelXAxis)).normalize();
     
     // Tạo ma trận biến đổi
     const modelMatrix = new THREE.Matrix4().makeBasis(modelXAxis, modelYAxis, modelZAxis);
