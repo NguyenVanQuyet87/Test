@@ -342,8 +342,8 @@ function placeModelOnMarker(pose) {
     // - Trục X hướng sang phải theo chiều ngang của marker
     
     // Áp dụng quaternion để lấy các trục của marker trong không gian thế giới
-    const markerNormal = new THREE.Vector3(1, 0, 0).applyQuaternion(quaternion);    // Trục Z của marker
-    const markerUp = new THREE.Vector3(0, 1, 0).applyQuaternion(quaternion);        // Trục Y của marker  
+    const markerNormal = new THREE.Vector3(0, 1, 0).applyQuaternion(quaternion);    // Trục Z của marker
+    const markerUp = new THREE.Vector3(1, 0, 0).applyQuaternion(quaternion);        // Trục Y của marker  
     const markerRight = new THREE.Vector3(0, 0, 1).applyQuaternion(quaternion);     // Trục X của marker
     
     // Điều chỉnh để đáp ứng yêu cầu:
