@@ -337,7 +337,7 @@ function placeModelOnMarker(pose) {
     // Các trục trong hệ local của marker (KHÔNG PHẢI trục world)
     const localX = new THREE.Vector3(1,0,0);
     const localY = new THREE.Vector3(0,1,0);
-    const localZ = new THREE.Vector3(0,0,1); // <-- chọn đây là pháp tuyến local nếu convention như vậy
+    const localZ = new THREE.Vector3(0,0,-1); // <-- chọn đây là pháp tuyến local nếu convention như vậy
     
     // Chuyển các trục local sang world bằng quaternion (local -> world)
     const markerRight  = localX.clone().applyQuaternion(quaternion); // X của marker trong world
@@ -349,9 +349,9 @@ function placeModelOnMarker(pose) {
     // - Model +Y sang trái,
     // - Model +Z lên trên,
     
-    const modelZAxis = markerNormal.clone();   // +X model = vào trong marker (ngược với normal)
-    const modelXAxis = markerRight.clone();    // +Y model = sang trái (ngược với right)
-    const modelYAxis = markerUp.clone();                // +Z model = lên trên
+    let modelZAxis = markerNormal.clone();   // +X model = vào trong marker (ngược với normal)
+    let modelXAxis = markerRight.clone();    // +Y model = sang trái (ngược với right)
+    let modelYAxis = markerUp.clone();                // +Z model = lên trên
     
     // Bảo đảm trực giao/chuẩn hoá
     modelXAxis.normalize();
