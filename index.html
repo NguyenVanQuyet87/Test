@@ -354,10 +354,10 @@ function placeModelOnMarker(pose) {
     let modelZAxis = markerUp.clone();                // +Z model = lên trên
     
     // Bảo đảm trực giao/chuẩn hoá
-    modelXAxis.normalize();
-    modelZAxis.normalize();
+    //modelXAxis.normalize();
+    //modelZAxis.normalize();
     // recompute modelYAxis to ensure orthonormal right-hand system:
-    modelYAxis.copy(new THREE.Vector3().crossVectors(modelZAxis, modelXAxis)).normalize();
+    //modelYAxis.copy(new THREE.Vector3().crossVectors(modelZAxis, modelXAxis)).normalize();
     
     // Tạo ma trận biến đổi
     const modelMatrix = new THREE.Matrix4().makeBasis(modelXAxis, modelYAxis, modelZAxis);
@@ -421,25 +421,6 @@ function debugAxes(group, xAxis, yAxis, zAxis) {
     const zMaterial = new THREE.LineBasicMaterial({ color: 0x0000ff });
     const zAxisLine = new THREE.Line(zGeometry, zMaterial);
     group.add(zAxisLine);
-
-    // Thêm nhãn cho các trục
-    const labelOptions = {
-        font: '12px Arial',
-        color: 0xffffff,
-        backgroundColor: 0x000000
-    };
-    
-    const xLabel = new THREE.TextSprite(`X (into marker)`);
-    xLabel.position.set(axisLength+0.05, 0, 0);
-    group.add(xLabel);
-    
-    const yLabel = new THREE.TextSprite(`Y (left)`);
-    yLabel.position.set(0, axisLength + 0.05, 0);
-    group.add(yLabel);
-    
-    const zLabel = new THREE.TextSprite(`Z (up)`);
-    zLabel.position.set(0, 0, axisLength + 0.05);
-    group.add(zLabel);
 }
     
   // --- orientation helpers ---
