@@ -334,16 +334,28 @@ function placeModelOnMarker(pose) {
     const scale = new THREE.Vector3();
     matrix.decompose(position, quaternion, scale);
     
-    // Xác định các trục cơ sở của marker trong không gian thế giới
-    const markerNormal = new THREE.Vector3(0, 0, 1).applyQuaternion(quaternion);
-    const markerUp = new THREE.Vector3(0, 1, 0).applyQuaternion(quaternion);
-    const markerRight = new THREE.Vector3(1, 0, 0).applyQuaternion(quaternion);
+    // Tạo ma trận cho marker trong không gian thế giới
+    // Ma trận này biểu diễn hướng của marker so với thế giới
+    const markerMatrix = new THREE.Matrix4();
+    markerMatrix.compose(position, quaternion, new THREE.Vector3(1, 1, 1));
+    
+    // Trích xuất các trục cơ sở từ ma trận marker
+    const markerRight = new THREE.Vector3();
+    const markerUp = new THREE.Vector3();
+    const markerForward = new THREE.Vector3();
+    
+    markerMatrix.extractBasis(markerRight, markerUp, markerForward);
+    
+    // Bây giờ chúng ta có các trục vuông góc với mặt phẳng marker:
+    // - markerRight: trục X của marker (hướng sang phải)
+    // - markerUp: trục Y của marker (hướng lên trên)
+    // - markerForward: trục Z của marker (hướng ra ngoài mặt phẳng marker)
     
     // Điều chỉnh để đáp ứng yêu cầu:
-    // - Trục X: hướng vào marker (ngược với markerNormal)
+    // - Trục X: hướng vào marker (ngược với markerForward)
     // - Trục Y: hướng sang trái (ngược với markerRight)
     // - Trục Z: hướng lên trên (giữ nguyên markerUp)
-    const inwardNormal = new THREE.Vector3().copy(markerNormal).negate();
+    const inwardNormal = new THREE.Vector3().copy(markerForward).negate();
     const leftDirection = new THREE.Vector3().copy(markerRight).negate();
     const upwardDirection = new THREE.Vector3().copy(markerUp);
     
@@ -353,8 +365,8 @@ function placeModelOnMarker(pose) {
     // Thiết lập các trục cơ sở theo yêu cầu
     modelMatrix.set(
         inwardNormal.x, leftDirection.x, upwardDirection.x, position.x,
-        inwardNormal.z, leftDirection.z, upwardDirection.z, position.y,
-        inwardNormal.y, leftDirection.y, upwardDirection.y, position.z,
+        inwardNormal.y, leftDirection.y, upwardDirection.y, position.y,
+        inwardNormal.z, leftDirection.z, upwardDirection.z, position.z,
         0, 0, 0, 1
     );
     
