@@ -351,7 +351,7 @@ function placeModelOnMarker(pose) {
     // - Trục Y của mô hình: hướng sang trái (ngược với markerRight)
     // - Trục Z của mô hình: hướng lên trên (giữ nguyên markerUp)
     const modelXAxis = new THREE.Vector3().copy(markerNormal).negate();  // X: vào trong marker
-    const modelYAxis = new THREE.Vector3().copy(markerRight).negate();   // Y: sang trái
+    const modelYAxis = new THREE.Vector3().copy(markerRight);   // Y: sang trái
     const modelZAxis = new THREE.Vector3().copy(markerUp);               // Z: lên trên
     
     // Tạo ma trận biến đổi cho mô hình
