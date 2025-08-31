@@ -349,9 +349,9 @@ function placeModelOnMarker(pose) {
     // - Model +Y sang trái,
     // - Model +Z lên trên,
     
-    const modelXAxis = markerNormal.clone();   // +X model = vào trong marker (ngược với normal)
-    const modelYAxis = markerRight.clone();    // +Y model = sang trái (ngược với right)
-    const modelZAxis = markerUp.clone();                // +Z model = lên trên
+    const modelZAxis = markerNormal.clone();   // +X model = vào trong marker (ngược với normal)
+    const modelXAxis = markerRight.clone();    // +Y model = sang trái (ngược với right)
+    const modelYAxis = markerUp.clone();                // +Z model = lên trên
     
     // Bảo đảm trực giao/chuẩn hoá
     modelXAxis.normalize();
