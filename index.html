@@ -648,16 +648,18 @@ function computePlacementMatrixFromMatrix(baseMatrix) {
         placementBtn.style.display = 'none';
         hideQRFrame();
       }
-
-    }
-    renderer.render(scene,camera);
       // Raycast từ tâm màn hình
       const hit = getIntersects();
       if (hit) {
         const obj = hit.object;
-        if (obj.material) obj.material.color.set(0xff0000);
+        if (obj.material) {
+          obj.material.color.set(0xff0000);
+        }
         infoEl.textContent = `Chọn: ${obj.name}`;
       }
+    }
+    renderer.render(scene,camera);
+
   });
 
   renderer.domElement.addEventListener("touchstart",(e)=>{ if (e.touches.length===1) { isDragging=true; previousTouchX=e.touches[0].clientX; } });
