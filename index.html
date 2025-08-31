@@ -543,9 +543,7 @@ function computePlacementMatrixFromMatrix(baseMatrix) {
       new THREE.Vector2(0, 0.01),           // lệch lên
       new THREE.Vector2(0, -0.01)           // lệch xuống
     ];
-  
     let allHits = [];
-  
     offsets.forEach(off => {
       const ndc = new THREE.Vector2(center.x + off.x, center.y + off.y);
       raycaster.setFromCamera(ndc, camera);
@@ -557,6 +555,18 @@ function computePlacementMatrixFromMatrix(baseMatrix) {
     if (allHits.length > 0) {
       allHits.sort((a, b) => a.distance - b.distance);
       return allHits[0];
+    } else {
+    // fallback: kiểm tra nếu camera ở trong bounding box
+      for (let obj of scene.children) {
+        if (obj.isMesh) {
+          obj.geometry.computeBoundingBox();
+          const box = obj.geometry.boundingBox.clone();
+          box.applyMatrix4(obj.matrixWorld);
+          if (box.containsPoint(camera.position)) {
+            return obj; // chọn object mà camera đang ở trong
+          }
+        }
+      }
     }
     return null;
   }
