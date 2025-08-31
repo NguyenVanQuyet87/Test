@@ -442,25 +442,39 @@ function debugAxes(group, normal, up, right) {
     return fwd;
   }
 
-  function computePlacementMatrixFromMatrix(baseMatrix) {
-    const poseMat = new THREE.Matrix4().copy(baseMatrix);
-    const rotMat = new THREE.Matrix4().extractRotation(poseMat);
-    const normal = new THREE.Vector3(0,1,0).applyMatrix4(rotMat).normalize();
-    const camH = getCameraHorizontalDir();
-    const camProj = camH.clone().projectOnPlane(normal);
-    if (camProj.length() < 1e-3) {
-      camProj.copy(_lastHDir).projectOnPlane(normal);
-      if (camProj.length() < 1e-3) camProj.set(1,0,0);
-    }
-    camProj.normalize();
-    const xAxis = camProj.clone();
-    const yAxis = normal.clone().normalize();
-    const zAxis = new THREE.Vector3().crossVectors(yAxis, xAxis).normalize();
-    const basis = new THREE.Matrix4().makeBasis(xAxis, yAxis, zAxis);
-    const pos = new THREE.Vector3().setFromMatrixPosition(poseMat);
-    basis.setPosition(pos);
-    return basis;
+function computePlacementMatrixFromMatrix(baseMatrix) {
+  const poseMat = new THREE.Matrix4().copy(baseMatrix);
+
+  // Lấy normal từ mặt phẳng (giữ là "up")
+  const rotMat = new THREE.Matrix4().extractRotation(poseMat);
+  const normal = new THREE.Vector3(0,1,0).applyMatrix4(rotMat).normalize();
+
+  // Lấy hướng forward theo camera (x-axis theo định nghĩa của bạn)
+  const camFwd = getCameraHorizontalDir();
+
+  // Chiếu forward lên mặt phẳng
+  const camProj = camFwd.clone().projectOnPlane(normal);
+  if (camProj.length() < 1e-3) {
+    camProj.copy(_lastHDir).projectOnPlane(normal);
+    if (camProj.length() < 1e-3) camProj.set(1,0,0);
   }
+  camProj.normalize();
+
+  // Đặt trục theo quy ước mới
+  const xAxis = camProj.clone();                   // X = ra khỏi camera
+  const zAxis = normal.clone().normalize();        // Z = lên trên
+  const yAxis = new THREE.Vector3().crossVectors(zAxis, xAxis).normalize(); 
+  // Y = trái (cross theo Z × X)
+
+  // Tạo hệ cơ sở
+  const basis = new THREE.Matrix4().makeBasis(xAxis, yAxis, zAxis);
+
+  // Đặt vị trí
+  const pos = new THREE.Vector3().setFromMatrixPosition(poseMat);
+  basis.setPosition(pos);
+
+  return basis;
+}
 
   async function placeAnchorFromLastHit() {
     if (isPlacing) return;
