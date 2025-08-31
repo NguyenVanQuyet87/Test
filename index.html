@@ -327,44 +327,34 @@ function placeModelOnMarker(pose) {
     group.matrixAutoUpdate = false;
     
     // Sử dụng ma trận từ pose của marker
+    // Lấy pose từ marker
     const matrix = new THREE.Matrix4().fromArray(pose.transform.matrix);
     
-    // Phân rã ma trận để lấy vị trí và hướng
     const position = new THREE.Vector3();
     const quaternion = new THREE.Quaternion();
     const scale = new THREE.Vector3();
     matrix.decompose(position, quaternion, scale);
     
-    // Xác định các trục cơ sở của marker trong không gian thế giới
-    // Trong hệ tọa độ marker mặc định:
-    // - Trục Z là pháp tuyến của mặt phẳng marker (hướng ra ngoài)
-    // - Trục Y hướng lên trên theo chiều dọc của marker
-    // - Trục X hướng sang phải theo chiều ngang của marker
+    // Các trục chuẩn (world axes)
+    const worldX = new THREE.Vector3(1, 0, 0);
+    const worldY = new THREE.Vector3(0, 1, 0);
+    const worldZ = new THREE.Vector3(0, 0, 1);
     
-    // Áp dụng quaternion để lấy các trục của marker trong không gian thế giới
-    const markerNormal = new THREE.Vector3(0, 1, 0).applyQuaternion(quaternion);    // Trục Z của marker
-    const markerUp = new THREE.Vector3(1, 0, 0).applyQuaternion(quaternion);        // Trục Y của marker  
-    const markerRight = new THREE.Vector3(0, 0, 1).applyQuaternion(quaternion);     // Trục X của marker
+    // Xoay các trục chuẩn theo quaternion của marker
+    const markerRight   = worldX.clone().applyQuaternion(quaternion); // X của marker
+    const markerUp      = worldY.clone().applyQuaternion(quaternion); // Y của marker
+    const markerNormal  = worldZ.clone().applyQuaternion(quaternion); // Z của marker
     
-    // Điều chỉnh để đáp ứng yêu cầu:
-    // - Trục X của mô hình: vuông góc với mặt phẳng marker, hướng vào trong (ngược với markerNormal)
-    // - Trục Y của mô hình: hướng sang trái (ngược với markerRight)
-    // - Trục Z của mô hình: hướng lên trên (giữ nguyên markerUp)
-    const modelXAxis = new THREE.Vector3().copy(markerNormal).negate();  // X: vào trong marker
-    const modelYAxis = new THREE.Vector3().copy(markerRight).negate();   // Y: sang trái
-    const modelZAxis = new THREE.Vector3().copy(markerUp).negate();               // Z: lên trên
+    // Giờ ánh xạ sang hệ mô hình mong muốn:
+    // - Trục X mô hình: vuông góc marker, vào trong => -markerNormal
+    // - Trục Y mô hình: sang trái => -markerRight
+    // - Trục Z mô hình: lên trên => markerUp
+    const modelXAxis = markerNormal.clone().negate();
+    const modelYAxis = markerRight.clone().negate();
+    const modelZAxis = markerUp.clone();
     
-    // Tạo ma trận biến đổi cho mô hình
+    // Tạo ma trận biến đổi mô hình
     const modelMatrix = new THREE.Matrix4();
-    
-    // Thiết lập các trục cơ sở theo yêu cầu
-    // Ma trận 4x4 trong Three.js có cấu trúc:
-    // [
-    //   x.x, y.x, z.x, pos.x,
-    //   x.y, y.y, z.y, pos.y,
-    //   x.z, y.z, z.z, pos.z,
-    //   0,   0,   0,   1
-    // ]
     modelMatrix.set(
         modelXAxis.x, modelYAxis.x, modelZAxis.x, position.x,
         modelXAxis.y, modelYAxis.y, modelZAxis.y, position.y,
