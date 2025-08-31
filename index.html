@@ -609,6 +609,29 @@ function computePlacementMatrixFromMatrix(baseMatrix) {
     camera.updateProjectionMatrix(); 
     renderer.setSize(window.innerWidth, window.innerHeight); 
   });
+
+    window.addEventListener("click", (event) => {
+  // Lấy tọa độ tap (chuẩn hóa thành NDC: -1 đến 1)
+  const mouse = new THREE.Vector2(
+    (event.clientX / window.innerWidth) * 2 - 1,
+    -(event.clientY / window.innerHeight) * 2 + 1
+  );
+
+  // Raycast từ camera
+  const raycaster = new THREE.Raycaster();
+  raycaster.setFromCamera(mouse, camera);
+
+  // Kiểm tra va chạm
+  const intersects = raycaster.intersectObjects(scene.children, true);
+
+  if (intersects.length > 0) {
+    const obj = intersects[0].object;
+    infoEl.textContent = JSON.stringify(obj.name, null, 2);
+    // Ví dụ: đổi màu object
+    obj.material.color.set(0xff0000);
+  }
+});
+    
   </script>
 </body>
 </html>
