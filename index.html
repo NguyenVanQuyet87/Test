@@ -341,12 +341,11 @@ function placeModelOnMarker(pose) {
     const localY = new THREE.Vector3(0,1,0); // PHÁP TUYẾN marker
     const localZ = new THREE.Vector3(0,0,1); // nằm trên mặt
     // Đưa sang world
-    const markerRight  = localX.clone().applyQuaternion(quaternion); // nằm ngang
+    const markerUp  = localX.clone().applyQuaternion(quaternion); // nằm ngang
     const markerNormal = localY.clone().applyQuaternion(quaternion); // pháp tuyến mặt
-    const markerUp= localZ.clone().applyQuaternion(quaternion); // nằm ngang
+    const markerRight = localZ.clone().applyQuaternion(quaternion); // nằm ngang
     
     let modelXAxis = markerNormal.clone().negate();   // +X model = vào trong marker (ngược với normal)
-    let modelYAxis = markerRight.clone().negate();    // +Y model = sang trái (ngược với right)
     let modelZAxis = markerUp.clone();                // +Z model = lên trên
     
     // Bảo đảm trực giao/chuẩn hoá
