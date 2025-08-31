@@ -527,7 +527,7 @@ function computePlacementMatrixFromMatrix(baseMatrix) {
   focusRing.style.left = "50%";
   focusRing.style.width = "30px";
   focusRing.style.height = "30px";
-  focusRing.style.border = "2px solid red";
+  focusRing.style.border = "2px dash white";
   focusRing.style.borderRadius = "50%";
   focusRing.style.transform = "translate(-50%, -50%)";
   focusRing.style.pointerEvents = "none"; // không chặn click
@@ -613,21 +613,22 @@ function computePlacementMatrixFromMatrix(baseMatrix) {
         placementBtn.style.display = 'none';
         hideQRFrame();
       }
+      // Raycast từ tâm màn hình
+      raycaster.setFromCamera(center, camera);
+      const intersects = raycaster.intersectObjects(scene.children, true);
+    
+      if (intersects.length > 0) {
+        const obj = intersects[0].object;
+    
+        // Ví dụ: đổi màu highlight
+        if (obj.material) obj.material.color.set(0xff0000);
+    
+        // Hiển thị thông tin ra thẻ div (infoEl đã có sẵn)
+        infoEl.textContent = `Chọn: ${obj.name}`;
+      }
     }
     renderer.render(scene,camera);
-    // Raycast từ tâm màn hình
-    raycaster.setFromCamera(center, camera);
-    const intersects = raycaster.intersectObjects(scene.children, true);
-  
-    if (intersects.length > 0) {
-      const obj = intersects[0].object;
-  
-      // Ví dụ: đổi màu highlight
-      if (obj.material) obj.material.color.set(0xff0000);
-  
-      // Hiển thị thông tin ra thẻ div (infoEl đã có sẵn)
-      infoEl.textContent = `Chọn: ${obj.name}`;
-    }
+
   });
 
   renderer.domElement.addEventListener("touchstart",(e)=>{ if (e.touches.length===1) { isDragging=true; previousTouchX=e.touches[0].clientX; } });
@@ -639,29 +640,7 @@ function computePlacementMatrixFromMatrix(baseMatrix) {
     camera.updateProjectionMatrix(); 
     renderer.setSize(window.innerWidth, window.innerHeight); 
   });
-// Lựa chọn đối tượng trên màn hình
-    window.addEventListener("click", (event) => {
-  // Lấy tọa độ tap (chuẩn hóa thành NDC: -1 đến 1)
-  const mouse = new THREE.Vector2(
-    (event.clientX / window.innerWidth) * 2 - 1,
-    -(event.clientY / window.innerHeight) * 2 + 1
-  );
-
-  // Raycast từ camera
-  const raycaster = new THREE.Raycaster();
-  raycaster.setFromCamera(mouse, camera);
-
-  // Kiểm tra va chạm
-  const intersects = raycaster.intersectObjects(scene.children, true);
-
-  if (intersects.length > 0) {
-    const obj = intersects[0].object;
-    infoEl.textContent = JSON.stringify(obj.name, null, 2);
-    // Ví dụ: đổi màu object
-    obj.material.color.set(0xff0000);
-  }
-});
-    
+  
   </script>
 </body>
 </html>
