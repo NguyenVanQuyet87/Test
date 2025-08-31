@@ -352,9 +352,9 @@ function placeModelOnMarker(pose) {
     
     // Thiết lập các trục cơ sở theo yêu cầu
     modelMatrix.set(
-        inwardNormal.z, leftDirection.z, upwardDirection.z, position.z,
-        inwardNormal.y, leftDirection.y, upwardDirection.y, position.y,
-        inwardNormal.x, leftDirection.x, upwardDirection.x, position.x,
+        inwardNormal.y, leftDirection.y, upwardDirection.y, position.x,
+        inwardNormal.z, leftDirection.z, upwardDirection.z, position.y,
+        inwardNormal.x, leftDirection.x, upwardDirection.x, position.z,
         0, 0, 0, 1
     );
     
