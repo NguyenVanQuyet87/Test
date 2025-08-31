@@ -283,6 +283,8 @@
   loader.load("test.glb", (gltf)=>{
     modelTemplate = gltf.scene;
     modelTemplate.scale.set(0.2,0.2,0.2);
+    // Xoay từ hệ glTF (+Y up) sang hệ WebXR
+    modelTemplate.rotation.x = -Math.PI / 2;
     console.log(gltf.scene)
     infoEl.textContent = "Model đã load — di chuyển camera để tìm mặt phẳng hoặc marker.";
   }, undefined, (err)=>{
