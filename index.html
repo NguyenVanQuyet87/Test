@@ -1,11 +1,12 @@
+```html
 <!DOCTYPE html>
 <html lang="vi">
 <head>
   <meta charset="utf-8" />
-  <title>WebXR AR với Marker Tracking và Hiệu Ứng Quét + Adjust</title>
+  <title>WebXR AR với Marker Tracking và Hiệu Ứng Quét</title>
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <style>
-    body { margin: 0; overflow: hidden; font-family: system-ui, sans-serif; }
+    body { margin: 0; overflow: hidden; }
     canvas { display: block; }
     #opacityControl {
       position: absolute;
@@ -69,139 +70,79 @@
       cursor: pointer;
       display: none;
     }
-
-    /* Adjust UI */
     #adjustBtn {
       position: absolute;
-      right: 16px;
-      top: 50%;
-      transform: translateY(-50%);
-      z-index: 20;
-      background: rgba(255,255,255,0.95);
+      bottom: 150px;
+      right: 10px;
+      z-index: 10;
+      background: rgba(255,255,255,0.9);
       color: #111;
       padding: 8px 12px;
-      border-radius: 8px;
+      font-family: system-ui, sans-serif;
+      font-size: 13px;
       border: 1px solid #ccc;
+      border-radius: 6px;
       cursor: pointer;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
     }
-    #adjustOverlay {
-      position: absolute;
-      inset: 0;
-      z-index: 19;
+    #axesOverlay {
       display: none;
-      pointer-events: none; /* bật pointer cho child khi cần */
-    }
-    #adjustUI {
       position: absolute;
-      inset: 0;
-      pointer-events: auto;
-    }
-    /* Cross axes at center */
-    .center-cross {
-      position: absolute;
-      left: 50%;
       top: 50%;
-      transform: translate(-50%,-50%);
+      left: 50%;
+      width: 0;
+      height: 0;
       pointer-events: none;
-      z-index: 21;
-      width: 300px;
-      height: 300px;
+      z-index: 10;
     }
-    .axis-line {
+    #axesOverlay .x-axis {
       position: absolute;
-      left: 50%;
-      top: 50%;
-      transform-origin: center;
-      background: rgba(255,255,255,0.9);
+      left: 0;
+      top: 0;
+      height: 2px;
+      background: red;
+      transform-origin: 0 50%;
     }
-    .axis-x { width: 100%; height: 2px; transform: translate(-50%,-50%); }
-    .axis-y { width: 2px; height: 100%; transform: translate(-50%,-50%); }
-    .axis-label {
+    #axesOverlay .y-axis {
       position: absolute;
-      color: white;
-      font-size: 12px;
-      background: rgba(0,0,0,0.5);
-      padding: 2px 6px;
-      border-radius: 4px;
+      left: 0;
+      top: 0;
+      height: 2px;
+      background: green;
+      transform-origin: 0 50%;
     }
-    .axis-label.x { left: calc(50% + 120px); top: 50%; transform: translateY(-50%); }
-    .axis-label.y { top: calc(50% - 140px); left: 50%; transform: translateX(-50%); }
-
-    /* Left vertical slider (height) */
-    #leftControls {
+    #axesOverlay .x-label {
       position: absolute;
-      left: 12px;
+      color: red;
+      font-family: monospace;
+      font-size: 13px;
+    }
+    #axesOverlay .y-label {
+      position: absolute;
+      color: green;
+      font-family: monospace;
+      font-size: 13px;
+    }
+    #heightSlider {
+      display: none;
+      position: absolute;
+      left: 10px;
       top: 50%;
       transform: translateY(-50%);
-      z-index: 22;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      pointer-events: auto;
-    }
-    #zSlider {
-      -webkit-appearance: none;
-      appearance: none;
+      -webkit-appearance: slider-vertical;
+      writing-mode: bt-lr;
       width: 8px;
-      height: 240px;
-      transform: rotate(-90deg);
-      transform-origin: center;
-      cursor: pointer;
+      height: 200px;
+      z-index: 10;
     }
-    #zLabel {
-      color: white;
-      font-size: 13px;
-      background: rgba(0,0,0,0.45);
-      padding: 6px;
-      border-radius: 6px;
-      pointer-events: none;
-    }
-
-    /* Bottom rotation slider */
-    #bottomControls {
+    #rotationSlider {
+      display: none;
       position: absolute;
+      bottom: 60px;
       left: 50%;
-      bottom: 12px;
       transform: translateX(-50%);
-      z-index: 22;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      pointer-events: auto;
+      width: 80%;
+      z-index: 10;
     }
-    #rotSlider {
-      width: 320px;
-      cursor: pointer;
-    }
-    #rotLabel {
-      color: white;
-      font-size: 13px;
-      background: rgba(0,0,0,0.45);
-      padding: 6px;
-      border-radius: 6px;
-      pointer-events: none;
-    }
-
-    /* Drag instruction area (transparent) */
-    #dragArea {
-      position: absolute;
-      left: 50%;
-      top: 50%;
-      width: 320px;
-      height: 320px;
-      transform: translate(-50%,-50%);
-      z-index: 18;
-      pointer-events: auto;
-      background: rgba(0,0,0,0.0);
-    }
-
-    /* simple responsive tweaks */
-    @media (max-width: 520px) {
-      .center-cross { width: 220px; height: 220px; }
-      #rotSlider { width: 220px; }
-    }
-
     /* Hiệu ứng quét QR code */
     #markerOverlay {
       position: absolute;
@@ -279,6 +220,7 @@
   <div id="markerStatus">Chưa phát hiện marker</div>
   <button id="resetBtn" type="button">Reset AR</button>
   <button id="placementBtn" type="button">Đặt mô hình</button>
+  <button id="adjustBtn" type="button">Adjust</button>
   <input type="range" id="opacityControl" min="0" max="1" step="0.05" value="1">
   
   <!-- Overlay hiệu ứng quét QR code -->
@@ -292,30 +234,19 @@
     </div>
   </div>
 
-  <!-- Adjust button & overlay -->
-  <button id="adjustBtn" title="Adjust model">Adjust</button>
-  <div id="adjustOverlay">
-    <div id="adjustUI">
-      <div class="center-cross" aria-hidden="true">
-        <div class="axis-line axis-x"></div>
-        <div class="axis-line axis-y"></div>
-        <div class="axis-label x">X</div>
-        <div class="axis-label y">Y</div>
-      </div>
-
-      <div id="leftControls">
-        <div id="zLabel">Z: <span id="zVal">0.00</span> m</div>
-        <input id="zSlider" type="range" min="-1" max="2" step="0.01" value="0">
-      </div>
-
-      <div id="bottomControls">
-        <div id="rotLabel">Rot: <span id="rotVal">0</span>°</div>
-        <input id="rotSlider" type="range" min="-180" max="180" step="1" value="0">
-      </div>
-
-      <div id="dragArea" title="Tap + kéo: ngang → X, dọc → Y"></div>
-    </div>
+  <!-- Overlay trục X và Y -->
+  <div id="axesOverlay">
+    <div class="x-axis"></div>
+    <div class="y-axis"></div>
+    <div class="x-label">X</div>
+    <div class="y-label">Y</div>
   </div>
+
+  <!-- Thanh kéo độ cao (Z) -->
+  <input type="range" id="heightSlider" min="-1" max="1" step="0.01" value="0">
+
+  <!-- Thanh kéo quay (rotation quanh Z) -->
+  <input type="range" id="rotationSlider" min="-180" max="180" step="1" value="0">
 
   <script type="module">
   import * as THREE from "https://esm.sh/three@0.160.0";
@@ -326,31 +257,39 @@
   const markerStatusEl = document.getElementById("markerStatus");
   const resetBtn = document.getElementById("resetBtn");
   const placementBtn = document.getElementById("placementBtn");
+  const adjustBtn = document.getElementById("adjustBtn");
   const markerOverlay = document.getElementById("markerOverlay");
   const qrFrame = document.querySelector('.qr-frame');
-
-  // Adjust UI elements
-  const adjustBtn = document.getElementById('adjustBtn');
-  const adjustOverlay = document.getElementById('adjustOverlay');
-  const dragArea = document.getElementById('dragArea');
-  const zSlider = document.getElementById('zSlider');
-  const rotSlider = document.getElementById('rotSlider');
-  const zVal = document.getElementById('zVal');
-  const rotVal = document.getElementById('rotVal');
+  const axesOverlay = document.getElementById("axesOverlay");
+  const xAxisEl = axesOverlay.querySelector('.x-axis');
+  const yAxisEl = axesOverlay.querySelector('.y-axis');
+  const xLabelEl = axesOverlay.querySelector('.x-label');
+  const yLabelEl = axesOverlay.querySelector('.y-label');
+  const heightSlider = document.getElementById("heightSlider");
+  const rotationSlider = document.getElementById("rotationSlider");
 
   let modelTemplate = null;
   let currentAnchor = null;
   let reticle;
   let hitTestSource = null;
   let lastHitResult = null;
-  let currentModel = null;            // mesh/group we visually placed (the placed model)
-  let currentRootGroup = null;        // top-level group that may have anchors (group.matrixAutoUpdate=false)
-  let currentInteractiveGroup = null; // wrapper under root group with matrixAutoUpdate=true for moving/rotating/height
+  let currentModel = null;
   let isDragging = false;
-  let previousPointer = null;
+  let previousTouchX = 0;
+  let previousTouchY = 0;
+  let isPlacing = false;
   let markerDetected = false;
   let markerPose = null;
   const allAnchors = new Set();
+  let adjustMode = false;
+  let lastHeightValue = 0;
+  let lastRotationValue = 0;
+  let projectedNormXX = 0;
+  let projectedNormXY = 0;
+  let pixelsPerMX = 0;
+  let projectedNormYX = 0;
+  let projectedNormYY = 0;
+  let pixelsPerMY = 0;
 
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(70, window.innerWidth/window.innerHeight, 0.01, 20);
@@ -365,37 +304,58 @@
   // Hàm cập nhật vị trí và kích thước của hiệu ứng quét QR dựa trên vị trí marker
   function updateQRFramePosition(pose) {
     if (!pose) return;
+    
+    // Lấy ma trận chuyển đổi từ pose
     const matrix = new THREE.Matrix4().fromArray(pose.transform.matrix);
     const position = new THREE.Vector3();
     const scale = new THREE.Vector3();
     const quaternion = new THREE.Quaternion();
     matrix.decompose(position, quaternion, scale);
+    
+    // Chuyển đổi vị trí 3D sang tọa độ màn hình 2D
     const vector = position.clone();
     vector.project(camera);
+    
     const x = (vector.x * 0.5 + 0.5) * window.innerWidth;
     const y = -(vector.y * 0.5 - 0.5) * window.innerHeight;
+    
+    // Ước tính kích thước của marker trên màn hình dựa trên khoảng cách
     const distance = position.distanceTo(camera.position);
-    const markerSize = (0.15 / Math.max(distance, 0.1)) * 500;
+    const markerSize = (0.15 / distance) * 500; // 0.15 là widthInMeters của marker
+    
+    // Cập nhật vị trí và kích thước của khung QR
     qrFrame.style.width = `${markerSize}px`;
     qrFrame.style.height = `${markerSize}px`;
     qrFrame.style.left = `${x - markerSize/2}px`;
     qrFrame.style.top = `${y - markerSize/2}px`;
+    
+    // Hiển thị overlay
     markerOverlay.style.display = 'block';
   }
 
-  function hideQRFrame() { markerOverlay.style.display = 'none'; }
+  // Ẩn hiệu ứng quét QR
+  function hideQRFrame() {
+    markerOverlay.style.display = 'none';
+  }
 
   async function initARButton() {
     if (!("xr" in navigator)) { infoEl.textContent = "Trình duyệt không hỗ trợ WebXR."; return; }
     const supported = await navigator.xr.isSessionSupported("immersive-ar");
     if (!supported) { infoEl.textContent = "Thiết bị không hỗ trợ AR."; return; }
+    // Load marker image
     try {
       const imgBitmap = await fetch("marker.png")
         .then(r => r.blob())
         .then(b => createImageBitmap(b));
+      
       document.body.appendChild(ARButton.createButton(renderer, {
         requiredFeatures: ["image-tracking"],
-        trackedImages: [{ image: imgBitmap, widthInMeters: 0.15 }],
+        trackedImages: [
+          {
+            image: imgBitmap,
+            widthInMeters: 0.15
+          }
+        ],
         optionalFeatures: ["hit-test", "anchors", "dom-overlay"],
         domOverlay: { root: document.body }
       }));
@@ -415,6 +375,7 @@
   reticle.visible = false;
   scene.add(reticle);
 
+  // Tạo hình khối mẫu nếu không tải được GLTF
   function createFallbackModel() {
     const geometry = new THREE.BoxGeometry(0.1, 0.1, 0.1);
     const material = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
@@ -424,13 +385,15 @@
     group.scale.set(0.2, 0.2, 0.2);
     return group;
   }
-
+  // Hệ tọa độ của file GTLF thì trục Y sẽ hướng lên trên, trục Z hướng dọc mô hình
   const loader = new GLTFLoader();
   loader.load("test.glb", (gltf)=>{
     modelTemplate = gltf.scene;
     modelTemplate.scale.set(0.2,0.2,0.2);
-    // Xoay từ hệ glTF (+Y up) sang hệ WebXR nếu cần
+    // Xoay từ hệ glTF (+Y up) sang hệ WebXR
     modelTemplate.rotation.x = Math.PI / 2;
+    console.log(gltf.scene)
+    console.log(gltf.parser)
     infoEl.textContent = "Model đã load — di chuyển camera để tìm mặt phẳng hoặc marker.";
   }, undefined, (err)=>{
     console.error("GLTF load error:", err);
@@ -461,92 +424,108 @@
     }
     currentAnchor = null;
     currentModel = null;
-    currentRootGroup = null;
-    currentInteractiveGroup = null;
   }
 
-  // Tạo một wrapper interactionGroup để dễ di chuyển/rotate/height
-  function createInteractiveWrapper(rootGroup, placed) {
-    // đặt interactionGroup làm con của rootGroup; rootGroup có thể là anchored group (matrixAutoUpdate=false)
-    const interaction = new THREE.Group();
-    interaction.name = 'interactionGroup';
-    interaction.position.set(0,0,0);
-    interaction.matrixAutoUpdate = true;
-    rootGroup.add(interaction);
-    interaction.add(placed);
-    return interaction;
-  }
-
-  // place model on marker (poses from image tracking)
-  function placeModelOnMarker(pose) {
+    // Hàm đặt mô hình lên marker với hướng trục X trùng với pháp tuyến của marker
+function placeModelOnMarker(pose) {
     if (!modelTemplate || isPlacing) return;
+    
     isPlacing = true;
     clearAllPlacementsAndAnchors();
-
+    
     const group = new THREE.Group();
     group.matrixAutoUpdate = false;
-
+    
+    // Sử dụng ma trận từ pose của marker
+    // matrix/quaternion đã lấy từ pose
     const matrix = new THREE.Matrix4().fromArray(pose.transform.matrix);
     const position = new THREE.Vector3();
     const quaternion = new THREE.Quaternion();
     const scale = new THREE.Vector3();
     matrix.decompose(position, quaternion, scale);
-
-    // Build a simple orientation so model's "up" aligns with marker normal
-    const localY = new THREE.Vector3(0,1,0).applyQuaternion(quaternion).normalize(); // normal
-    // pick camera forward to determine X axis
-    const camFwd = new THREE.Vector3();
-    camera.getWorldDirection(camFwd);
-    camFwd.y = 0; camFwd.normalize();
-    const xAxis = camFwd.clone().projectOnPlane(localY).normalize();
-    if (xAxis.length() < 1e-3) xAxis.set(1,0,0);
-    const zAxis = new THREE.Vector3().crossVectors(localY, xAxis).normalize();
-    const modelMat = new THREE.Matrix4().makeBasis(xAxis, localY, zAxis);
-    modelMat.setPosition(position);
-    group.matrix.copy(modelMat);
-
+    
+    // Các trục trong hệ local của marker (KHÔNG PHẢI trục world)
+    const localX = new THREE.Vector3(1,0,0); // nằm trên mặt
+    const localY = new THREE.Vector3(0,1,0); // PHÁP TUYẾN marker
+    const localZ = new THREE.Vector3(0,0,1); // nằm trên mặt
+    // Đưa sang world
+    const markerRight  = localX.clone().applyQuaternion(quaternion); // nằm ngang
+    const markerNormal = localY.clone().applyQuaternion(quaternion); // pháp tuyến mặt
+    const markerUp = localZ.clone().applyQuaternion(quaternion); // nằm ngang
+    
+    let modelXAxis = markerNormal.clone().negate();   // +X model = vào trong marker (ngược với normal)
+    let modelYAxis = markerRight.clone().negate();                // +Z model = lên trên
+    let modelZAxis = markerUp.clone().negate();                // +Z model = lên trên
+    
+    // Bảo đảm trực giao/chuẩn hoá
+    modelXAxis.normalize();
+    modelZAxis.normalize();
+    modelYAxis.copy(new THREE.Vector3().crossVectors(modelZAxis, modelXAxis)).normalize();
+    
+    // Tạo ma trận biến đổi
+    const modelMatrix = new THREE.Matrix4().makeBasis(modelXAxis, modelYAxis, modelZAxis);
+    modelMatrix.setPosition(position);
+    
+    // Áp dụng ma trận cho group
+    group.matrix.copy(modelMatrix);
+    
     PLACEMENTS_ROOT.add(group);
-    currentRootGroup = group;
-
+    
     const placed = cloneModel(modelTemplate);
-    // add an interaction wrapper so we can translate/rotate/height easily
-    currentInteractiveGroup = createInteractiveWrapper(group, placed);
+    group.add(placed);
     currentModel = placed;
-
-    // create anchor if possible
+    
+    // Tạo anchor nếu có thể
     if (pose && pose.createAnchor) {
       pose.createAnchor().then(anchor => {
         currentAnchor = { anchor, group };
         allAnchors.add(anchor);
       }).catch(console.error);
     }
-
-    infoEl.textContent = "Model đã được đặt trên marker! Bạn có thể nhấn Adjust để điều chỉnh.";
+    
+    infoEl.textContent = "Model đã được đặt trên marker! Trục X vào marker, Y sang trái, Z lên trên.";
     isPlacing = false;
     markerDetected = false;
+    
+    // Ẩn hiệu ứng quét sau khi đặt model
     hideQRFrame();
+    
+    // Debug: hiển thị các trục của marker
+    debugAxes(group, modelXAxis, modelYAxis, modelZAxis);
+}
 
-    // cập nhật UI sliders theo giá trị hiện tại
-    updateSlidersFromModel();
-  }
-
-  // debug axes (small visual helper)
-  function debugAxes(group, xAxis, yAxis, zAxis) {
+// Hàm debug để hiển thị các trục
+function debugAxes(group, xAxis, yAxis, zAxis) {
     const axisLength = 0.2;
-    const xGeometry = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0, 0, 0), new THREE.Vector3(axisLength, 0, 0)]);
+    
+    // Trục X (đỏ) - hướng vào marker
+    const xGeometry = new THREE.BufferGeometry().setFromPoints([
+        new THREE.Vector3(0, 0, 0),
+        new THREE.Vector3(axisLength, 0, 0,)
+    ]);
     const xMaterial = new THREE.LineBasicMaterial({ color: 0xff0000 });
     const xAxisLine = new THREE.Line(xGeometry, xMaterial);
     group.add(xAxisLine);
-    const yGeometry = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, axisLength, 0)]);
+    
+    // Trục Y (xanh lá) - hướng sang trái
+    const yGeometry = new THREE.BufferGeometry().setFromPoints([
+        new THREE.Vector3(0, 0, 0),
+        new THREE.Vector3(0, axisLength, 0)
+    ]);
     const yMaterial = new THREE.LineBasicMaterial({ color: 0x00ff00 });
     const yAxisLine = new THREE.Line(yGeometry, yMaterial);
     group.add(yAxisLine);
-    const zGeometry = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 0, axisLength)]);
+    
+    // Trục Z (xanh dương) - hướng lên trên
+    const zGeometry = new THREE.BufferGeometry().setFromPoints([
+        new THREE.Vector3(0, 0, 0),
+        new THREE.Vector3(0, 0, axisLength)
+    ]);
     const zMaterial = new THREE.LineBasicMaterial({ color: 0x0000ff });
     const zAxisLine = new THREE.Line(zGeometry, zMaterial);
     group.add(zAxisLine);
-  }
-
+}
+    
   // --- orientation helpers ---
   let _lastHDir = new THREE.Vector3(1, 0, 0);
   function getCameraHorizontalDir() {
@@ -560,25 +539,39 @@
     return fwd;
   }
 
-  function computePlacementMatrixFromMatrix(baseMatrix) {
-    const poseMat = new THREE.Matrix4().copy(baseMatrix);
-    const rotMat = new THREE.Matrix4().extractRotation(poseMat);
-    const normal = new THREE.Vector3(0,1,0).applyMatrix4(rotMat).normalize();
-    const camFwd = getCameraHorizontalDir();
-    const camProj = camFwd.clone().projectOnPlane(normal);
-    if (camProj.length() < 1e-3) {
-      camProj.copy(_lastHDir).projectOnPlane(normal);
-      if (camProj.length() < 1e-3) camProj.set(1,0,0);
-    }
-    camProj.normalize();
-    const xAxis = camProj.clone();
-    const zAxis = normal.clone().normalize();
-    const yAxis = new THREE.Vector3().crossVectors(zAxis, xAxis).normalize();
-    const basis = new THREE.Matrix4().makeBasis(xAxis, yAxis, zAxis);
-    const pos = new THREE.Vector3().setFromMatrixPosition(poseMat);
-    basis.setPosition(pos);
-    return basis;
+function computePlacementMatrixFromMatrix(baseMatrix) {
+  const poseMat = new THREE.Matrix4().copy(baseMatrix);
+
+  // Lấy normal từ mặt phẳng (giữ là "up")
+  const rotMat = new THREE.Matrix4().extractRotation(poseMat);
+  const normal = new THREE.Vector3(0,1,0).applyMatrix4(rotMat).normalize();
+
+  // Lấy hướng forward theo camera (x-axis theo định nghĩa của bạn)
+  const camFwd = getCameraHorizontalDir();
+
+  // Chiếu forward lên mặt phẳng
+  const camProj = camFwd.clone().projectOnPlane(normal);
+  if (camProj.length() < 1e-3) {
+    camProj.copy(_lastHDir).projectOnPlane(normal);
+    if (camProj.length() < 1e-3) camProj.set(1,0,0);
   }
+  camProj.normalize();
+
+  // Đặt trục theo quy ước mới
+  const xAxis = camProj.clone();                   // X = ra khỏi camera
+  const zAxis = normal.clone().normalize();        // Z = lên trên
+  const yAxis = new THREE.Vector3().crossVectors(zAxis, xAxis).normalize(); 
+  // Y = trái (cross theo Z × X)
+
+  // Tạo hệ cơ sở
+  const basis = new THREE.Matrix4().makeBasis(xAxis, yAxis, zAxis);
+
+  // Đặt vị trí
+  const pos = new THREE.Vector3().setFromMatrixPosition(poseMat);
+  basis.setPosition(pos);
+
+  return basis;
+}
 
   async function placeAnchorFromLastHit() {
     if (isPlacing) return;
@@ -592,24 +585,23 @@
     const group = new THREE.Group();
     group.matrixAutoUpdate=false;
     if (pose) {
+      // dùng orientation helper để đặt matrix
       const placementMatrix = computePlacementMatrixFromMatrix(new THREE.Matrix4().fromArray(pose.transform.matrix));
       group.matrix.copy(placementMatrix);
     }
     PLACEMENTS_ROOT.add(group);
-    currentRootGroup = group;
     const placed = cloneModel(modelTemplate);
-    currentInteractiveGroup = createInteractiveWrapper(group, placed);
+    group.add(placed);
     currentModel = placed;
     currentAnchor = { anchor, group };
     if (anchor) allAnchors.add(anchor);
     isPlacing=false;
-    updateSlidersFromModel();
   }
 
   const controller = renderer.xr.getController(0);
   controller.addEventListener("select", ()=>{ if (reticle.visible) placeAnchorFromLastHit(); });
   scene.add(controller);
-
+  
   window.addEventListener("click", ()=>{ 
     const s=renderer.xr.getSession(); 
     if (s && reticle.visible) placeAnchorFromLastHit(); 
@@ -635,152 +627,92 @@
     hideQRFrame();
   });
 
-  // Adjust UI toggle
-  adjustBtn.addEventListener('click', ()=>{
-    if (adjustOverlay.style.display === 'block') {
-      adjustOverlay.style.display = 'none';
-      adjustBtn.textContent = 'Adjust';
+  adjustBtn.addEventListener("click", () => {
+    adjustMode = !adjustMode;
+    heightSlider.style.display = adjustMode ? 'block' : 'none';
+    rotationSlider.style.display = adjustMode ? 'block' : 'none';
+    if (adjustMode) {
+      heightSlider.value = 0;
+      rotationSlider.value = 0;
+      lastHeightValue = 0;
+      lastRotationValue = 0;
     } else {
-      adjustOverlay.style.display = 'block';
-      adjustBtn.textContent = 'Close';
+      axesOverlay.style.display = 'none';
     }
   });
 
-  // Update sliders to reflect current model transform
-  function updateSlidersFromModel() {
-    if (!currentInteractiveGroup) return;
-    // Treat Y as up in our placements (consistent with computePlacementMatrixFromMatrix)
-    const pos = currentInteractiveGroup.position;
-    zSlider.value = pos.y.toFixed(2); // slider mapped to Y (height)
-    zVal.textContent = Number(pos.y).toFixed(2);
-    // rotation around up axis (Y)
-    const euler = new THREE.Euler().setFromQuaternion(currentInteractiveGroup.quaternion, 'YXZ');
-    const deg = THREE.MathUtils.radToDeg(euler.y);
-    rotSlider.value = deg.toFixed(0);
-    rotVal.textContent = deg.toFixed(0);
-  }
-
-  // zSlider affects **height** (Y axis) — vì trong code trước chúng dùng Y làm normal/up
-  zSlider.addEventListener('input', ()=>{
-    if (!currentInteractiveGroup) return;
-    const v = parseFloat(zSlider.value);
-    currentInteractiveGroup.position.y = v;
-    zVal.textContent = v.toFixed(2);
+  heightSlider.addEventListener("input", (e) => {
+    const value = parseFloat(e.target.value);
+    const delta = (value - lastHeightValue) * 0.5; // Factor điều chỉnh độ nhạy
+    translateAlongLocalAxis(new THREE.Vector3(0, 0, 1), delta);
+    lastHeightValue = value;
   });
 
-  // rotSlider rotates around up axis (world Y)
-  rotSlider.addEventListener('input', ()=>{
-    if (!currentInteractiveGroup) return;
-    const deg = parseFloat(rotSlider.value);
-    rotVal.textContent = deg.toFixed(0);
-    // set rotation around Y
-    currentInteractiveGroup.rotation.set(0, THREE.MathUtils.degToRad(deg), 0);
+  rotationSlider.addEventListener("input", (e) => {
+    const value = parseFloat(e.target.value);
+    const deltaDeg = value - lastRotationValue;
+    rotateAroundLocalAxis(new THREE.Vector3(0, 0, 1), THREE.MathUtils.degToRad(deltaDeg));
+    lastRotationValue = value;
   });
-
-  // Drag to translate in X and Z-plane (we map drag X → X, drag Y → Z in world plane parallel to ground)
-  // But user requested drag X → X, drag Y → Y. Because in our placement 'Y' is up, we will interpret:
-  // horizontal drag → world X, vertical drag → world Z (forward/back on ground plane).
-  // To match their wording loosely: X and Y "in-plane" (we show labels X and Y in UI), but in 3D ground plane we'll move X and Z.
-  let pointerActive = false;
-  let startPointer = null;
-  let startModelPos = new THREE.Vector3();
-  function pointerDown(e) {
-    if (!currentInteractiveGroup) return;
-    e.preventDefault();
-    pointerActive = true;
-    previousPointer = { x: e.clientX, y: e.clientY, id: e.pointerId };
-    startPointer = { x: e.clientX, y: e.clientY };
-    // store start pos in world
-    startModelPos.copy(currentInteractiveGroup.position);
-    dragArea.setPointerCapture(e.pointerId);
-  }
-  function pointerMove(e) {
-    if (!pointerActive || !currentInteractiveGroup || !startPointer) return;
-    e.preventDefault();
-    const dx = e.clientX - startPointer.x;
-    const dy = e.clientY - startPointer.y;
-    // compute a sensible scale: relate pixels to meters by distance from camera to model
-    const worldPos = new THREE.Vector3();
-    currentRootGroup.getWorldPosition(worldPos);
-    const distance = camera.position.distanceTo(worldPos) || 1;
-    // sensitivity: pixels → meters (tweakable)
-    const sensitivity = 0.0015 * distance; // adjust factor if movement too fast/slow
-    // horizontal drag -> world X
-    const deltaX = dx * sensitivity;
-    // vertical drag -> world Z (forward/back on ground plane)
-    const deltaZ = -dy * sensitivity;
-    // apply in local ground-frame of rootGroup: we want X and forward relative to camera orientation.
-    // We'll compute camera horizontal direction as forward, and right vector as cross(forward, up).
-    const camFwd = new THREE.Vector3();
-    camera.getWorldDirection(camFwd);
-    camFwd.y = 0; camFwd.normalize();
-    const up = new THREE.Vector3(0,1,0);
-    const camRight = new THREE.Vector3().crossVectors(camFwd, up).normalize();
-
-    // new position = start + right*deltaX + forward*deltaZ
-    const newPos = startModelPos.clone();
-    newPos.add(camRight.multiplyScalar(deltaX));
-    newPos.add(camFwd.multiplyScalar(deltaZ));
-
-    // But currentInteractiveGroup.position is local to rootGroup; convert world delta to local
-    // Compute rootGroup world matrix inverse to transform newPos into rootGroup local coordinates
-    const rootWorldInv = new THREE.Matrix4().copy(currentRootGroup.matrixWorld).invert();
-    const localPos = newPos.clone().applyMatrix4(rootWorldInv);
-
-    currentInteractiveGroup.position.copy(localPos);
-    // update sliders if needed
-    zSlider.value = currentInteractiveGroup.position.y.toFixed(2);
-    zVal.textContent = currentInteractiveGroup.position.y.toFixed(2);
-    // update rotation slider display but don't change rotation
-    const euler = new THREE.Euler().setFromQuaternion(currentInteractiveGroup.quaternion, 'YXZ');
-    rotVal.textContent = THREE.MathUtils.radToDeg(euler.y).toFixed(0);
-  }
-  function pointerUp(e) {
-    if (!pointerActive) return;
-    pointerActive = false;
-    startPointer = null;
-    try { dragArea.releasePointerCapture(e.pointerId); } catch(_) {}
-  }
-
-  // Add pointer events on dragArea
-  dragArea.addEventListener('pointerdown', pointerDown);
-  window.addEventListener('pointermove', pointerMove);
-  window.addEventListener('pointerup', pointerUp);
-  window.addEventListener('pointercancel', pointerUp);
-
-  // Tương tác chạm cho mobile (touch) đã được bao bởi pointer events trên hầu hết trình duyệt hiện đại.
-
-  // Raycaster and center hits (kept original)
+    
+  // Tạo vòng tròn focus ở giữa màn hình (chỉ để người dùng thấy)
+  const focusRing = document.createElement("div");
+  focusRing.style.position = "absolute";
+  focusRing.style.top = "50%";
+  focusRing.style.left = "50%";
+  focusRing.style.width = "30px";
+  focusRing.style.height = "30px";
+  focusRing.style.border = "2px solid white";
+  focusRing.style.borderRadius = "50%";
+  focusRing.style.transform = "translate(-50%, -50%)";
+  focusRing.style.pointerEvents = "none"; // không chặn click
+  document.body.appendChild(focusRing);
+  // Raycaster và vector chuẩn hóa tâm màn hình
   const raycaster = new THREE.Raycaster();
-  const center = new THREE.Vector2(0, 0);
+  const center = new THREE.Vector2(0, 0); 
   function getIntersects() {
     const offsets = [
-      new THREE.Vector2(0, 0),
-      new THREE.Vector2(0.01, 0),
-      new THREE.Vector2(-0.01, 0),
-      new THREE.Vector2(0, 0.01),
-      new THREE.Vector2(0, -0.01)
+      new THREE.Vector2(0, 0),              // tia trung tâm
+      new THREE.Vector2(0.01, 0),           // lệch phải
+      new THREE.Vector2(-0.01, 0),          // lệch trái
+      new THREE.Vector2(0, 0.01),           // lệch lên
+      new THREE.Vector2(0, -0.01)           // lệch xuống
     ];
     let allHits = [];
     offsets.forEach(off => {
       const ndc = new THREE.Vector2(center.x + off.x, center.y + off.y);
       raycaster.setFromCamera(ndc, camera);
       const hits = raycaster.intersectObjects(scene.children, true);
-      if (hits.length > 0) allHits.push(hits[0]);
+      if (hits.length > 0) allHits.push(hits[0]); // lấy object gần nhất cho mỗi tia
     });
+  
+    // chọn object gần nhất trong tất cả các tia
     if (allHits.length > 0) {
       allHits.sort((a, b) => a.distance - b.distance);
       return allHits[0];
+    } else {
+    // fallback: kiểm tra nếu camera ở trong bounding box
+      //for (let obj of scene.children) {
+        //if (obj.isMesh) {
+          //obj.geometry.computeBoundingBox();
+          //const box = obj.geometry.boundingBox.clone();
+          //box.applyMatrix4(obj.matrixWorld);
+          //if (box.containsPoint(camera.position)) {
+            //return obj; // chọn object mà camera đang ở trong
+          //}
+        //}
+      //}
     }
     return null;
   }
-
-  // Session start
+    
+  // Sự kiện bắt đầu vào chế độ AR  
   renderer.xr.addEventListener("sessionstart", async ()=>{
     const session = renderer.xr.getSession();
     infoEl.textContent = "Đã vào chế độ AR, di chuyển để quét mặt phẳng hoặc marker...";
     const viewerSpace = await session.requestReferenceSpace("viewer");
     hitTestSource = await session.requestHitTestSource({ space: viewerSpace }).catch(()=>null);
+    
     session.addEventListener("end", ()=>{ 
       hitTestSource = null; 
       clearAllPlacementsAndAnchors(); 
@@ -789,12 +721,9 @@
       placementBtn.style.display = 'none';
       markerDetected = false;
       hideQRFrame();
-      adjustOverlay.style.display = 'none';
-      adjustBtn.textContent = 'Adjust';
     });
   });
 
-  let isPlacing = false;
   renderer.setAnimationLoop((t,frame)=>{
     if (frame) {
       const refSpace = renderer.xr.getReferenceSpace();
@@ -806,8 +735,8 @@
           if (pose) { reticle.visible=true; reticle.matrix.fromArray(pose.transform.matrix); }
         } else { reticle.visible=false; }
       }
-
-      // image tracking
+      
+      // Xử lý image tracking
       const results = frame.getImageTrackingResults ? frame.getImageTrackingResults() : [];
       if (results.length > 0) {
         for (const result of results) {
@@ -819,12 +748,20 @@
               markerStatusEl.textContent = 
                 `Marker được nhận diện!\n`+
                 `Vị trí: x=${p.x.toFixed(2)}, y=${p.y.toFixed(2)}, z=${p.z.toFixed(2)}`;
+              
+              // Cập nhật hiệu ứng quét QR tại vị trí marker
               updateQRFramePosition(pose);
+              
+              // Lưu trữ pose của marker để sử dụng sau
               markerPose = pose;
+              
+              // Tự động đặt model khi phát hiện marker
               if (!currentModel && modelTemplate && !markerDetected) {
                 markerDetected = true;
                 placementBtn.style.display = 'block';
                 placementBtn.textContent = 'Đặt mô hình lên marker';
+                
+                // Tự động đặt mô hình sau 2 giây
                 setTimeout(() => {
                   if (markerDetected && markerPose) {
                     placeModelOnMarker(markerPose);
@@ -846,32 +783,155 @@
         placementBtn.style.display = 'none';
         hideQRFrame();
       }
-
-      // Raycast center to show selection (kept)
+      // Raycast từ tâm màn hình
       const hit = getIntersects();
       if (hit) {
         const obj = hit.object;
-        if (obj.material && obj.material.color) {
+        if (obj.material) {
           obj.material.color.set(0xff0000);
         }
-        infoEl.textContent = `Chọn: ${obj.name || obj.uuid}`;
+        infoEl.textContent = `Chọn: ${obj.name}`;
+      }
+
+      // Cập nhật overlay trục nếu ở chế độ adjust
+      if (adjustMode && currentAnchor) {
+        const matrix = currentAnchor.group.matrix;
+        const position = new THREE.Vector3().setFromMatrixPosition(matrix);
+        const quaternion = new THREE.Quaternion().setFromRotationMatrix(matrix);
+        const worldZ = new THREE.Vector3(0, 0, 1).applyQuaternion(quaternion).normalize();
+        const plane = new THREE.Plane(worldZ, -position.dot(worldZ));
+        raycaster.setFromCamera(center, camera);
+        const hitPoint = new THREE.Vector3();
+        if (raycaster.ray.intersectPlane(plane, hitPoint)) {
+          const screenCenterX = window.innerWidth / 2;
+          const screenCenterY = window.innerHeight / 2;
+
+          // Trục X
+          const worldX = new THREE.Vector3(1, 0, 0).applyQuaternion(quaternion).normalize();
+          const endX = hitPoint.clone().add(worldX.multiplyScalar(0.1));
+          const endXProj = endX.clone().project(camera);
+          const endXX = (endXProj.x * 0.5 + 0.5) * window.innerWidth;
+          const endXY = -(endXProj.y * 0.5 - 0.5) * window.innerHeight;
+          let dxX = endXX - screenCenterX;
+          let dyX = endXY - screenCenterY;
+          let lengthX = Math.hypot(dxX, dyX);
+          if (lengthX > 1e-3) {
+            projectedNormXX = dxX / lengthX;
+            projectedNormXY = dyX / lengthX;
+            pixelsPerMX = lengthX / 0.1;
+            const angleX = Math.atan2(dyX, dxX) * 180 / Math.PI;
+            xAxisEl.style.transform = `rotate(${angleX}deg)`;
+            xAxisEl.style.display = 'block';
+            const axisLengthPx = 50;
+            xAxisEl.style.width = `${axisLengthPx}px`;
+            const radX = angleX * Math.PI / 180;
+            xLabelEl.style.left = `${axisLengthPx * Math.cos(radX)}px`;
+            xLabelEl.style.top = `${axisLengthPx * Math.sin(radX)}px`;
+          } else {
+            pixelsPerMX = 0;
+            xAxisEl.style.display = 'none';
+            xLabelEl.style.left = '0px';
+            xLabelEl.style.top = '0px';
+          }
+
+          // Trục Y
+          const worldY = new THREE.Vector3(0, 1, 0).applyQuaternion(quaternion).normalize();
+          const endY = hitPoint.clone().add(worldY.multiplyScalar(0.1));
+          const endYProj = endY.clone().project(camera);
+          const endYX = (endYProj.x * 0.5 + 0.5) * window.innerWidth;
+          const endYY = -(endYProj.y * 0.5 - 0.5) * window.innerHeight;
+          let dxY = endYX - screenCenterX;
+          let dyY = endYY - screenCenterY;
+          let lengthY = Math.hypot(dxY, dyY);
+          if (lengthY > 1e-3) {
+            projectedNormYX = dxY / lengthY;
+            projectedNormYY = dyY / lengthY;
+            pixelsPerMY = lengthY / 0.1;
+            const angleY = Math.atan2(dyY, dxY) * 180 / Math.PI;
+            yAxisEl.style.transform = `rotate(${angleY}deg)`;
+            yAxisEl.style.display = 'block';
+            const axisLengthPx = 50;
+            yAxisEl.style.width = `${axisLengthPx}px`;
+            const radY = angleY * Math.PI / 180;
+            yLabelEl.style.left = `${axisLengthPx * Math.cos(radY)}px`;
+            yLabelEl.style.top = `${axisLengthPx * Math.sin(radY)}px`;
+          } else {
+            pixelsPerMY = 0;
+            yAxisEl.style.display = 'none';
+            yLabelEl.style.left = '0px';
+            yLabelEl.style.top = '0px';
+          }
+
+          if (pixelsPerMX > 0 || pixelsPerMY > 0) {
+            axesOverlay.style.display = 'block';
+          } else {
+            axesOverlay.style.display = 'none';
+          }
+        } else {
+          axesOverlay.style.display = 'none';
+        }
       }
     }
     renderer.render(scene,camera);
+
   });
 
-  // touch rotate existing model (kept)
-  renderer.domElement.addEventListener("touchstart",(e)=>{ if (e.touches.length===1) { isDragging=true; previousTouchX=e.touches[0].clientX; } });
+  // Hàm dịch chuyển mô hình theo trục local
+  function translateAlongLocalAxis(localAxis, distance) {
+    if (!currentAnchor || !currentAnchor.group) return;
+    const group = currentAnchor.group;
+    const matrix = group.matrix.clone();
+    const quaternion = new THREE.Quaternion();
+    const position = new THREE.Vector3();
+    const scale = new THREE.Vector3();
+    matrix.decompose(position, quaternion, scale);
+    const worldAxis = localAxis.clone().applyQuaternion(quaternion).normalize();
+    position.add(worldAxis.multiplyScalar(distance));
+    matrix.compose(position, quaternion, scale);
+    group.matrix.copy(matrix);
+  }
+
+  // Hàm quay mô hình quanh trục local
+  function rotateAroundLocalAxis(localAxis, angleRad) {
+    if (!currentAnchor || !currentAnchor.group) return;
+    const group = currentAnchor.group;
+    const matrix = group.matrix.clone();
+    const quaternion = new THREE.Quaternion();
+    const position = new THREE.Vector3();
+    const scale = new THREE.Vector3();
+    matrix.decompose(position, quaternion, scale);
+    const rotationQuat = new THREE.Quaternion().setFromAxisAngle(localAxis, angleRad);
+    quaternion.multiply(rotationQuat); // Local rotation
+    matrix.compose(position, quaternion, scale);
+    group.matrix.copy(matrix);
+  }
+
+  renderer.domElement.addEventListener("touchstart",(e)=>{ 
+    if (e.touches.length===1) { 
+      isDragging=true; 
+      previousTouchX=e.touches[0].clientX; 
+      previousTouchY=e.touches[0].clientY; 
+    } 
+  });
   renderer.domElement.addEventListener("touchmove",(e)=>{ 
     if (isDragging && currentModel && e.touches.length===1) { 
       const dx=e.touches[0].clientX-previousTouchX; 
+      const dy=e.touches[0].clientY-previousTouchY; 
       previousTouchX=e.touches[0].clientX; 
-      currentModel.rotation.y += dx*0.01; 
-      // sync rot slider (approx)
-      if (currentInteractiveGroup) {
-        const deg = THREE.MathUtils.radToDeg(currentInteractiveGroup.rotation.y);
-        rotSlider.value = deg.toFixed(0);
-        rotVal.textContent = deg.toFixed(0);
+      previousTouchY=e.touches[0].clientY; 
+      if (adjustMode) {
+        if (pixelsPerMX > 0) {
+          const dotX = dx * projectedNormXX + dy * projectedNormXY;
+          const metersX = dotX / pixelsPerMX;
+          translateAlongLocalAxis(new THREE.Vector3(1, 0, 0), metersX);
+        }
+        if (pixelsPerMY > 0) {
+          const dotY = dx * projectedNormYX + dy * projectedNormYY;
+          const metersY = dotY / pixelsPerMY;
+          translateAlongLocalAxis(new THREE.Vector3(0, 1, 0), metersY);
+        }
+      } else {
+        currentModel.rotation.y += dx*0.01;
       }
     } 
   });
@@ -882,7 +942,8 @@
     camera.updateProjectionMatrix(); 
     renderer.setSize(window.innerWidth, window.innerHeight); 
   });
-
+  
   </script>
 </body>
 </html>
+```
