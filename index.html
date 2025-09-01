@@ -1,4 +1,3 @@
-```html
 <!DOCTYPE html>
 <html lang="vi">
 <head>
@@ -87,40 +86,30 @@
     #axesOverlay {
       display: none;
       position: absolute;
-      top: 50%;
-      left: 50%;
-      width: 0;
-      height: 0;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
       pointer-events: none;
       z-index: 10;
     }
-    #axesOverlay .x-axis {
+    .axis-line {
       position: absolute;
-      left: 0;
-      top: 0;
+      transform-origin: 0 0;
       height: 2px;
+    }
+    .x-axis {
       background: red;
-      transform-origin: 0 50%;
     }
-    #axesOverlay .y-axis {
-      position: absolute;
-      left: 0;
-      top: 0;
-      height: 2px;
+    .y-axis {
       background: green;
-      transform-origin: 0 50%;
     }
-    #axesOverlay .x-label {
+    .axis-label {
       position: absolute;
-      color: red;
+      color: white;
       font-family: monospace;
-      font-size: 13px;
-    }
-    #axesOverlay .y-label {
-      position: absolute;
-      color: green;
-      font-family: monospace;
-      font-size: 13px;
+      font-size: 14px;
+      transform: translate(-50%, -50%);
     }
     #heightSlider {
       display: none;
@@ -236,10 +225,10 @@
 
   <!-- Overlay trục X và Y -->
   <div id="axesOverlay">
-    <div class="x-axis"></div>
-    <div class="y-axis"></div>
-    <div class="x-label">X</div>
-    <div class="y-label">Y</div>
+    <div class="axis-line x-axis" id="xAxis"></div>
+    <div class="axis-line y-axis" id="yAxis"></div>
+    <div class="axis-label" id="xLabel">X</div>
+    <div class="axis-label" id="yLabel">Y</div>
   </div>
 
   <!-- Thanh kéo độ cao (Z) -->
@@ -261,10 +250,10 @@
   const markerOverlay = document.getElementById("markerOverlay");
   const qrFrame = document.querySelector('.qr-frame');
   const axesOverlay = document.getElementById("axesOverlay");
-  const xAxisEl = axesOverlay.querySelector('.x-axis');
-  const yAxisEl = axesOverlay.querySelector('.y-axis');
-  const xLabelEl = axesOverlay.querySelector('.x-label');
-  const yLabelEl = axesOverlay.querySelector('.y-label');
+  const xAxis = document.getElementById("xAxis");
+  const yAxis = document.getElementById("yAxis");
+  const xLabel = document.getElementById("xLabel");
+  const yLabel = document.getElementById("yLabel");
   const heightSlider = document.getElementById("heightSlider");
   const rotationSlider = document.getElementById("rotationSlider");
 
@@ -284,12 +273,6 @@
   let adjustMode = false;
   let lastHeightValue = 0;
   let lastRotationValue = 0;
-  let projectedNormXX = 0;
-  let projectedNormXY = 0;
-  let pixelsPerMX = 0;
-  let projectedNormYX = 0;
-  let projectedNormYY = 0;
-  let pixelsPerMY = 0;
 
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(70, window.innerWidth/window.innerHeight, 0.01, 20);
@@ -629,6 +612,7 @@ function computePlacementMatrixFromMatrix(baseMatrix) {
 
   adjustBtn.addEventListener("click", () => {
     adjustMode = !adjustMode;
+    axesOverlay.style.display = adjustMode ? 'block' : 'none';
     heightSlider.style.display = adjustMode ? 'block' : 'none';
     rotationSlider.style.display = adjustMode ? 'block' : 'none';
     if (adjustMode) {
@@ -636,8 +620,6 @@ function computePlacementMatrixFromMatrix(baseMatrix) {
       rotationSlider.value = 0;
       lastHeightValue = 0;
       lastRotationValue = 0;
-    } else {
-      axesOverlay.style.display = 'none';
     }
   });
 
@@ -654,6 +636,67 @@ function computePlacementMatrixFromMatrix(baseMatrix) {
     rotateAroundLocalAxis(new THREE.Vector3(0, 0, 1), THREE.MathUtils.degToRad(deltaDeg));
     lastRotationValue = value;
   });
+
+  // Hàm cập nhật hiển thị trục X và Y trên màn hình
+  function updateAxesDisplay() {
+    if (!currentAnchor || !currentAnchor.group || !adjustMode) return;
+    
+    const group = currentAnchor.group;
+    const matrix = group.matrix;
+    const position = new THREE.Vector3();
+    const quaternion = new THREE.Quaternion();
+    const scale = new THREE.Vector3();
+    matrix.decompose(position, quaternion, scale);
+    
+    // Chiếu vị trí của mô hình lên màn hình
+    const screenPos = position.clone();
+    screenPos.project(camera);
+    const screenX = (screenPos.x * 0.5 + 0.5) * window.innerWidth;
+    const screenY = -(screenPos.y * 0.5 - 0.5) * window.innerHeight;
+    
+    // Lấy hướng của các trục X và Y trong không gian thế giới
+    const xAxisDir = new THREE.Vector3(1, 0, 0).applyQuaternion(quaternion);
+    const yAxisDir = new THREE.Vector3(0, 1, 0).applyQuaternion(quaternion);
+    
+    // Chiếu hướng trục lên màn hình
+    const xAxisEnd = position.clone().add(xAxisDir.multiplyScalar(0.2));
+    const yAxisEnd = position.clone().add(yAxisDir.multiplyScalar(0.2));
+    
+    xAxisEnd.project(camera);
+    yAxisEnd.project(camera);
+    
+    const xAxisScreenX = (xAxisEnd.x * 0.5 + 0.5) * window.innerWidth;
+    const xAxisScreenY = -(xAxisEnd.y * 0.5 - 0.5) * window.innerHeight;
+    
+    const yAxisScreenX = (yAxisEnd.x * 0.5 + 0.5) * window.innerWidth;
+    const yAxisScreenY = -(yAxisEnd.y * 0.5 - 0.5) * window.innerHeight;
+    
+    // Tính toán góc và độ dài cho các trục trên màn hình
+    const xAngle = Math.atan2(xAxisScreenY - screenY, xAxisScreenX - screenX) * 180 / Math.PI;
+    const yAngle = Math.atan2(yAxisScreenY - screenY, yAxisScreenX - screenX) * 180 / Math.PI;
+    
+    const xLength = Math.sqrt(Math.pow(xAxisScreenX - screenX, 2) + Math.pow(xAxisScreenY - screenY, 2));
+    const yLength = Math.sqrt(Math.pow(yAxisScreenX - screenX, 2) + Math.pow(yAxisScreenY - screenY, 2));
+    
+    // Cập nhật hiển thị trục X
+    xAxis.style.width = `${xLength}px`;
+    xAxis.style.left = `${screenX}px`;
+    xAxis.style.top = `${screenY}px`;
+    xAxis.style.transform = `rotate(${xAngle}deg)`;
+    
+    // Cập nhật hiển thị trục Y
+    yAxis.style.width = `${yLength}px`;
+    yAxis.style.left = `${screenX}px`;
+    yAxis.style.top = `${screenY}px`;
+    yAxis.style.transform = `rotate(${yAngle}deg)`;
+    
+    // Cập nhật nhãn
+    xLabel.style.left = `${xAxisScreenX}px`;
+    xLabel.style.top = `${xAxisScreenY}px`;
+    
+    yLabel.style.left = `${yAxisScreenX}px`;
+    yLabel.style.top = `${yAxisScreenY}px`;
+  }
     
   // Tạo vòng tròn focus ở giữa màn hình (chỉ để người dùng thấy)
   const focusRing = document.createElement("div");
@@ -793,83 +836,9 @@ function computePlacementMatrixFromMatrix(baseMatrix) {
         infoEl.textContent = `Chọn: ${obj.name}`;
       }
 
-      // Cập nhật overlay trục nếu ở chế độ adjust
-      if (adjustMode && currentAnchor) {
-        const matrix = currentAnchor.group.matrix;
-        const position = new THREE.Vector3().setFromMatrixPosition(matrix);
-        const quaternion = new THREE.Quaternion().setFromRotationMatrix(matrix);
-        const worldZ = new THREE.Vector3(0, 0, 1).applyQuaternion(quaternion).normalize();
-        const plane = new THREE.Plane(worldZ, -position.dot(worldZ));
-        raycaster.setFromCamera(center, camera);
-        const hitPoint = new THREE.Vector3();
-        if (raycaster.ray.intersectPlane(plane, hitPoint)) {
-          const screenCenterX = window.innerWidth / 2;
-          const screenCenterY = window.innerHeight / 2;
-
-          // Trục X
-          const worldX = new THREE.Vector3(1, 0, 0).applyQuaternion(quaternion).normalize();
-          const endX = hitPoint.clone().add(worldX.multiplyScalar(0.1));
-          const endXProj = endX.clone().project(camera);
-          const endXX = (endXProj.x * 0.5 + 0.5) * window.innerWidth;
-          const endXY = -(endXProj.y * 0.5 - 0.5) * window.innerHeight;
-          let dxX = endXX - screenCenterX;
-          let dyX = endXY - screenCenterY;
-          let lengthX = Math.hypot(dxX, dyX);
-          if (lengthX > 1e-3) {
-            projectedNormXX = dxX / lengthX;
-            projectedNormXY = dyX / lengthX;
-            pixelsPerMX = lengthX / 0.1;
-            const angleX = Math.atan2(dyX, dxX) * 180 / Math.PI;
-            xAxisEl.style.transform = `rotate(${angleX}deg)`;
-            xAxisEl.style.display = 'block';
-            const axisLengthPx = 50;
-            xAxisEl.style.width = `${axisLengthPx}px`;
-            const radX = angleX * Math.PI / 180;
-            xLabelEl.style.left = `${axisLengthPx * Math.cos(radX)}px`;
-            xLabelEl.style.top = `${axisLengthPx * Math.sin(radX)}px`;
-          } else {
-            pixelsPerMX = 0;
-            xAxisEl.style.display = 'none';
-            xLabelEl.style.left = '0px';
-            xLabelEl.style.top = '0px';
-          }
-
-          // Trục Y
-          const worldY = new THREE.Vector3(0, 1, 0).applyQuaternion(quaternion).normalize();
-          const endY = hitPoint.clone().add(worldY.multiplyScalar(0.1));
-          const endYProj = endY.clone().project(camera);
-          const endYX = (endYProj.x * 0.5 + 0.5) * window.innerWidth;
-          const endYY = -(endYProj.y * 0.5 - 0.5) * window.innerHeight;
-          let dxY = endYX - screenCenterX;
-          let dyY = endYY - screenCenterY;
-          let lengthY = Math.hypot(dxY, dyY);
-          if (lengthY > 1e-3) {
-            projectedNormYX = dxY / lengthY;
-            projectedNormYY = dyY / lengthY;
-            pixelsPerMY = lengthY / 0.1;
-            const angleY = Math.atan2(dyY, dxY) * 180 / Math.PI;
-            yAxisEl.style.transform = `rotate(${angleY}deg)`;
-            yAxisEl.style.display = 'block';
-            const axisLengthPx = 50;
-            yAxisEl.style.width = `${axisLengthPx}px`;
-            const radY = angleY * Math.PI / 180;
-            yLabelEl.style.left = `${axisLengthPx * Math.cos(radY)}px`;
-            yLabelEl.style.top = `${axisLengthPx * Math.sin(radY)}px`;
-          } else {
-            pixelsPerMY = 0;
-            yAxisEl.style.display = 'none';
-            yLabelEl.style.left = '0px';
-            yLabelEl.style.top = '0px';
-          }
-
-          if (pixelsPerMX > 0 || pixelsPerMY > 0) {
-            axesOverlay.style.display = 'block';
-          } else {
-            axesOverlay.style.display = 'none';
-          }
-        } else {
-          axesOverlay.style.display = 'none';
-        }
+      // Cập nhật hiển thị trục nếu đang trong chế độ adjust
+      if (adjustMode) {
+        updateAxesDisplay();
       }
     }
     renderer.render(scene,camera);
@@ -920,16 +889,10 @@ function computePlacementMatrixFromMatrix(baseMatrix) {
       previousTouchX=e.touches[0].clientX; 
       previousTouchY=e.touches[0].clientY; 
       if (adjustMode) {
-        if (pixelsPerMX > 0) {
-          const dotX = dx * projectedNormXX + dy * projectedNormXY;
-          const metersX = dotX / pixelsPerMX;
-          translateAlongLocalAxis(new THREE.Vector3(1, 0, 0), metersX);
-        }
-        if (pixelsPerMY > 0) {
-          const dotY = dx * projectedNormYX + dy * projectedNormYY;
-          const metersY = dotY / pixelsPerMY;
-          translateAlongLocalAxis(new THREE.Vector3(0, 1, 0), metersY);
-        }
+        // Dịch theo trục X (horizontal drag)
+        translateAlongLocalAxis(new THREE.Vector3(1, 0, 0), dx * 0.001); // Factor nhạy
+        // Dịch theo trục Y (vertical drag, negate để up drag positive Y)
+        translateAlongLocalAxis(new THREE.Vector3(0, 1, 0), -dy * 0.001);
       } else {
         currentModel.rotation.y += dx*0.01;
       }
@@ -946,4 +909,3 @@ function computePlacementMatrixFromMatrix(baseMatrix) {
   </script>
 </body>
 </html>
-```
