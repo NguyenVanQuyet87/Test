@@ -110,6 +110,9 @@
       font-family: monospace;
       font-size: 14px;
       transform: translate(-50%, -50%);
+      background: rgba(0, 0, 0, 0.5);
+      padding: 2px 4px;
+      border-radius: 3px;
     }
     #heightSlider {
       display: none;
@@ -273,6 +276,10 @@
   let adjustMode = false;
   let lastHeightValue = 0;
   let lastRotationValue = 0;
+
+  // Biến mới để lưu trữ gốc tọa độ adjust
+  let adjustOrigin = new THREE.Vector3();
+  let adjustQuaternion = new THREE.Quaternion();
 
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(70, window.innerWidth/window.innerHeight, 0.01, 20);
@@ -608,10 +615,54 @@ function computePlacementMatrixFromMatrix(baseMatrix) {
     const s=renderer.xr.getSession(); 
     if (s) s.end(); 
     hideQRFrame();
+    // Ẩn chế độ adjust khi reset
+    adjustMode = false;
+    axesOverlay.style.display = 'none';
+    heightSlider.style.display = 'none';
+    rotationSlider.style.display = 'none';
   });
 
   adjustBtn.addEventListener("click", () => {
     adjustMode = !adjustMode;
+    
+    if (adjustMode) {
+      // Lấy giao điểm của tia từ giữa màn hình với mô hình
+      const hit = getIntersects();
+      if (hit && hit.point) {
+        // Lưu trữ gốc tọa độ mới
+        adjustOrigin.copy(hit.point);
+        
+        // Lấy hướng của camera để xác định hướng trục
+        const cameraDirection = new THREE.Vector3();
+        camera.getWorldDirection(cameraDirection);
+        cameraDirection.y = 0;
+        cameraDirection.normalize();
+        
+        // Tạo ma trận định hướng cho trục
+        const zAxis = new THREE.Vector3(0, 1, 0); // Trục Z thẳng đứng
+        const xAxis = new THREE.Vector3().crossVectors(zAxis, cameraDirection).normalize(); // Trục X vuông góc với hướng camera và trục Z
+        const yAxis = new THREE.Vector3().crossVectors(zAxis, xAxis).normalize(); // Trục Y vuông góc với trục X và Z
+        
+        // Tạo quaternion từ các trục
+        const matrix = new THREE.Matrix4().makeBasis(xAxis, yAxis, zAxis);
+        adjustQuaternion.setFromRotationMatrix(matrix);
+        
+        infoEl.textContent = "Đã vào chế độ Adjust. Gốc tọa độ đặt tại giao điểm giữa màn hình và mô hình.";
+      } else {
+        // Nếu không tìm thấy giao điểm, sử dụng vị trí hiện tại của mô hình
+        if (currentAnchor && currentAnchor.group) {
+          const position = new THREE.Vector3();
+          currentAnchor.group.getWorldPosition(position);
+          adjustOrigin.copy(position);
+          infoEl.textContent = "Đã vào chế độ Adjust. Sử dụng vị trí hiện tại của mô hình làm gốc.";
+        } else {
+          infoEl.textContent = "Không thể vào chế độ Adjust. Không tìm thấy mô hình.";
+          adjustMode = false;
+          return;
+        }
+      }
+    }
+    
     axesOverlay.style.display = adjustMode ? 'block' : 'none';
     heightSlider.style.display = adjustMode ? 'block' : 'none';
     rotationSlider.style.display = adjustMode ? 'block' : 'none';
@@ -639,63 +690,65 @@ function computePlacementMatrixFromMatrix(baseMatrix) {
 
   // Hàm cập nhật hiển thị trục X và Y trên màn hình
   function updateAxesDisplay() {
-    if (!currentAnchor || !currentAnchor.group || !adjustMode) return;
+    if (!adjustMode) return;
     
-    const group = currentAnchor.group;
-    const matrix = group.matrix;
-    const position = new THREE.Vector3();
-    const quaternion = new THREE.Quaternion();
-    const scale = new THREE.Vector3();
-    matrix.decompose(position, quaternion, scale);
-    
-    // Chiếu vị trí của mô hình lên màn hình
-    const screenPos = position.clone();
+    // Chiếu gốc tọa độ adjust lên màn hình
+    const screenPos = adjustOrigin.clone();
     screenPos.project(camera);
     const screenX = (screenPos.x * 0.5 + 0.5) * window.innerWidth;
     const screenY = -(screenPos.y * 0.5 - 0.5) * window.innerHeight;
     
-    // Lấy hướng của các trục X và Y trong không gian thế giới
-    const xAxisDir = new THREE.Vector3(1, 0, 0).applyQuaternion(quaternion);
-    const yAxisDir = new THREE.Vector3(0, 1, 0).applyQuaternion(quaternion);
+    // Tính toán hướng của các trục X và Y trong không gian thế giới
+    const xAxisDir = new THREE.Vector3(1, 0, 0).applyQuaternion(adjustQuaternion);
+    const yAxisDir = new THREE.Vector3(0, 1, 0).applyQuaternion(adjustQuaternion);
     
-    // Chiếu hướng trục lên màn hình
-    const xAxisEnd = position.clone().add(xAxisDir.multiplyScalar(0.2));
-    const yAxisEnd = position.clone().add(yAxisDir.multiplyScalar(0.2));
+    // Tính điểm kết thúc của các trục (kéo dài 3m mỗi phía)
+    const xAxisEndPos = adjustOrigin.clone().add(xAxisDir.multiplyScalar(3));
+    const xAxisStartPos = adjustOrigin.clone().add(xAxisDir.multiplyScalar(-3));
+    const yAxisEndPos = adjustOrigin.clone().add(yAxisDir.multiplyScalar(3));
+    const yAxisStartPos = adjustOrigin.clone().add(yAxisDir.multiplyScalar(-3));
     
-    xAxisEnd.project(camera);
-    yAxisEnd.project(camera);
+    // Chiếu các điểm lên màn hình
+    xAxisEndPos.project(camera);
+    xAxisStartPos.project(camera);
+    yAxisEndPos.project(camera);
+    yAxisStartPos.project(camera);
     
-    const xAxisScreenX = (xAxisEnd.x * 0.5 + 0.5) * window.innerWidth;
-    const xAxisScreenY = -(xAxisEnd.y * 0.5 - 0.5) * window.innerHeight;
+    const xAxisEndX = (xAxisEndPos.x * 0.5 + 0.5) * window.innerWidth;
+    const xAxisEndY = -(xAxisEndPos.y * 0.5 - 0.5) * window.innerHeight;
+    const xAxisStartX = (xAxisStartPos.x * 0.5 + 0.5) * window.innerWidth;
+    const xAxisStartY = -(xAxisStartPos.y * 0.5 - 0.5) * window.innerHeight;
     
-    const yAxisScreenX = (yAxisEnd.x * 0.5 + 0.5) * window.innerWidth;
-    const yAxisScreenY = -(yAxisEnd.y * 0.5 - 0.5) * window.innerHeight;
+    const yAxisEndX = (yAxisEndPos.x * 0.5 + 0.5) * window.innerWidth;
+    const yAxisEndY = -(yAxisEndPos.y * 0.5 - 0.5) * window.innerHeight;
+    const yAxisStartX = (yAxisStartPos.x * 0.5 + 0.5) * window.innerWidth;
+    const yAxisStartY = -(yAxisStartPos.y * 0.5 - 0.5) * window.innerHeight;
     
     // Tính toán góc và độ dài cho các trục trên màn hình
-    const xAngle = Math.atan2(xAxisScreenY - screenY, xAxisScreenX - screenX) * 180 / Math.PI;
-    const yAngle = Math.atan2(yAxisScreenY - screenY, yAxisScreenX - screenX) * 180 / Math.PI;
+    const xAngle = Math.atan2(xAxisEndY - xAxisStartY, xAxisEndX - xAxisStartX) * 180 / Math.PI;
+    const yAngle = Math.atan2(yAxisEndY - yAxisStartY, yAxisEndX - yAxisStartX) * 180 / Math.PI;
     
-    const xLength = Math.sqrt(Math.pow(xAxisScreenX - screenX, 2) + Math.pow(xAxisScreenY - screenY, 2));
-    const yLength = Math.sqrt(Math.pow(yAxisScreenX - screenX, 2) + Math.pow(yAxisScreenY - screenY, 2));
+    const xLength = Math.sqrt(Math.pow(xAxisEndX - xAxisStartX, 2) + Math.pow(xAxisEndY - xAxisStartY, 2));
+    const yLength = Math.sqrt(Math.pow(yAxisEndX - yAxisStartX, 2) + Math.pow(yAxisEndY - yAxisStartY, 2));
     
     // Cập nhật hiển thị trục X
     xAxis.style.width = `${xLength}px`;
-    xAxis.style.left = `${screenX}px`;
-    xAxis.style.top = `${screenY}px`;
+    xAxis.style.left = `${xAxisStartX}px`;
+    xAxis.style.top = `${xAxisStartY}px`;
     xAxis.style.transform = `rotate(${xAngle}deg)`;
     
     // Cập nhật hiển thị trục Y
     yAxis.style.width = `${yLength}px`;
-    yAxis.style.left = `${screenX}px`;
-    yAxis.style.top = `${screenY}px`;
+    yAxis.style.left = `${yAxisStartX}px`;
+    yAxis.style.top = `${yAxisStartY}px`;
     yAxis.style.transform = `rotate(${yAngle}deg)`;
     
     // Cập nhật nhãn
-    xLabel.style.left = `${xAxisScreenX}px`;
-    xLabel.style.top = `${xAxisScreenY}px`;
+    xLabel.style.left = `${xAxisEndX}px`;
+    xLabel.style.top = `${xAxisEndY}px`;
     
-    yLabel.style.left = `${yAxisScreenX}px`;
-    yLabel.style.top = `${yAxisScreenY}px`;
+    yLabel.style.left = `${yAxisEndX}px`;
+    yLabel.style.top = `${yAxisEndY}px`;
   }
     
   // Tạo vòng tròn focus ở giữa màn hình (chỉ để người dùng thấy)
@@ -710,42 +763,29 @@ function computePlacementMatrixFromMatrix(baseMatrix) {
   focusRing.style.transform = "translate(-50%, -50%)";
   focusRing.style.pointerEvents = "none"; // không chặn click
   document.body.appendChild(focusRing);
+  
   // Raycaster và vector chuẩn hóa tâm màn hình
   const raycaster = new THREE.Raycaster();
   const center = new THREE.Vector2(0, 0); 
-  function getIntersects() {
-    const offsets = [
-      new THREE.Vector2(0, 0),              // tia trung tâm
-      new THREE.Vector2(0.01, 0),           // lệch phải
-      new THREE.Vector2(-0.01, 0),          // lệch trái
-      new THREE.Vector2(0, 0.01),           // lệch lên
-      new THREE.Vector2(0, -0.01)           // lệch xuống
-    ];
-    let allHits = [];
-    offsets.forEach(off => {
-      const ndc = new THREE.Vector2(center.x + off.x, center.y + off.y);
-      raycaster.setFromCamera(ndc, camera);
-      const hits = raycaster.intersectObjects(scene.children, true);
-      if (hits.length > 0) allHits.push(hits[0]); // lấy object gần nhất cho mỗi tia
-    });
   
-    // chọn object gần nhất trong tất cả các tia
-    if (allHits.length > 0) {
-      allHits.sort((a, b) => a.distance - b.distance);
-      return allHits[0];
-    } else {
-    // fallback: kiểm tra nếu camera ở trong bounding box
-      //for (let obj of scene.children) {
-        //if (obj.isMesh) {
-          //obj.geometry.computeBoundingBox();
-          //const box = obj.geometry.boundingBox.clone();
-          //box.applyMatrix4(obj.matrixWorld);
-          //if (box.containsPoint(camera.position)) {
-            //return obj; // chọn object mà camera đang ở trong
-          //}
-        //}
-      //}
+  function getIntersects() {
+    const ndc = new THREE.Vector2(0, 0); // Tâm màn hình
+    raycaster.setFromCamera(ndc, camera);
+    const hits = raycaster.intersectObjects(PLACEMENTS_ROOT.children, true);
+    
+    if (hits.length > 0) {
+      return hits[0];
     }
+    
+    // Nếu không tìm thấy giao điểm với mô hình, thử tìm với các mặt phẳng
+    if (reticle.visible) {
+      const reticleHit = {
+        point: new THREE.Vector3().setFromMatrixPosition(reticle.matrix),
+        distance: camera.position.distanceTo(reticle.position)
+      };
+      return reticleHit;
+    }
+    
     return null;
   }
     
@@ -764,6 +804,11 @@ function computePlacementMatrixFromMatrix(baseMatrix) {
       placementBtn.style.display = 'none';
       markerDetected = false;
       hideQRFrame();
+      // Ẩn chế độ adjust khi kết thúc session
+      adjustMode = false;
+      axesOverlay.style.display = 'none';
+      heightSlider.style.display = 'none';
+      rotationSlider.style.display = 'none';
     });
   });
 
@@ -826,15 +871,6 @@ function computePlacementMatrixFromMatrix(baseMatrix) {
         placementBtn.style.display = 'none';
         hideQRFrame();
       }
-      // Raycast từ tâm màn hình
-      const hit = getIntersects();
-      if (hit) {
-        const obj = hit.object;
-        if (obj.material) {
-          obj.material.color.set(0xff0000);
-        }
-        infoEl.textContent = `Chọn: ${obj.name}`;
-      }
 
       // Cập nhật hiển thị trục nếu đang trong chế độ adjust
       if (adjustMode) {
@@ -842,7 +878,6 @@ function computePlacementMatrixFromMatrix(baseMatrix) {
       }
     }
     renderer.render(scene,camera);
-
   });
 
   // Hàm dịch chuyển mô hình theo trục local
