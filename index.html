@@ -139,6 +139,88 @@
       90% { opacity: 1; }
       100% { top: 100%; opacity: 0; }
     }
+    
+    /* UI điều chỉnh vị trí và hướng */
+    #adjustmentUI {
+      position: absolute;
+      right: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      z-index: 10;
+      background: rgba(0,0,0,0.6);
+      padding: 10px;
+      border-radius: 8px;
+      display: none;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .adjustment-control {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 5px;
+    }
+    .adjustment-control label {
+      color: white;
+      font-size: 12px;
+    }
+    .adjustment-control input[type="range"] {
+      width: 100px;
+    }
+    .arrow-control {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 5px;
+      margin: 10px 0;
+    }
+    .arrow-btn {
+      width: 40px;
+      height: 40px;
+      background: rgba(255,255,255,0.8);
+      border: 1px solid #ccc;
+      border-radius: 50%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-size: 20px;
+      cursor: pointer;
+      user-select: none;
+    }
+    .arrow-row {
+      display: flex;
+      gap: 10px;
+    }
+    #toggleUI {
+      position: absolute;
+      right: 10px;
+      top: 60px;
+      z-index: 11;
+      background: rgba(255,255,255,0.9);
+      color: #111;
+      padding: 6px 10px;
+      font-family: system-ui, sans-serif;
+      font-size: 13px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      cursor: pointer;
+      display: none;
+    }
+    #visibilityToggle {
+      position: absolute;
+      right: 10px;
+      top: 100px;
+      z-index: 11;
+      background: rgba(255,255,255,0.9);
+      color: #111;
+      padding: 6px 10px;
+      font-family: system-ui, sans-serif;
+      font-size: 13px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      cursor: pointer;
+      display: none;
+    }
   </style>
 </head>
 <body>
@@ -146,7 +228,8 @@
   <div id="markerStatus">Chưa phát hiện marker</div>
   <button id="resetBtn" type="button">Reset AR</button>
   <button id="placementBtn" type="button">Đặt mô hình</button>
-  <input type="range" id="opacityControl" min="0" max="1" step="0.05" value="1">
+  <button id="toggleUI" type="button">Hiện điều chỉnh</button>
+  <button id="visibilityToggle" type="button">Ẩn mô hình</button>
   
   <!-- Overlay hiệu ứng quét QR code -->
   <div id="markerOverlay">
@@ -156,6 +239,35 @@
       <div class="qr-corner qr-corner-bl"></div>
       <div class="qr-corner qr-corner-br"></div>
       <div class="scan-line"></div>
+    </div>
+  </div>
+
+  <!-- UI điều chỉnh vị trí và hướng -->
+  <div id="adjustmentUI">
+    <div class="arrow-control">
+      <div class="arrow-row">
+        <div class="arrow-btn" id="moveLeft">←</div>
+        <div class="arrow-btn" id="moveRight">→</div>
+      </div>
+      <div class="arrow-row">
+        <div class="arrow-btn" id="moveForward">↑</div>
+        <div class="arrow-btn" id="moveBackward">↓</div>
+      </div>
+    </div>
+    
+    <div class="adjustment-control">
+      <label for="heightSlider">Độ cao</label>
+      <input type="range" id="heightSlider" min="-1" max="1" step="0.01" value="0">
+    </div>
+    
+    <div class="adjustment-control">
+      <label for="rotationSlider">Xoay ngang</label>
+      <input type="range" id="rotationSlider" min="-3.14" max="3.14" step="0.01" value="0">
+    </div>
+    
+    <div class="adjustment-control">
+      <label for="opacitySlider">Độ trong suốt</label>
+      <input type="range" id="opacitySlider" min="0" max="1" step="0.05" value="1">
     </div>
   </div>
 
@@ -170,6 +282,12 @@
   const placementBtn = document.getElementById("placementBtn");
   const markerOverlay = document.getElementById("markerOverlay");
   const qrFrame = document.querySelector('.qr-frame');
+  const toggleUI = document.getElementById('toggleUI');
+  const visibilityToggle = document.getElementById('visibilityToggle');
+  const adjustmentUI = document.getElementById('adjustmentUI');
+  const heightSlider = document.getElementById('heightSlider');
+  const rotationSlider = document.getElementById('rotationSlider');
+  const opacitySlider = document.getElementById('opacitySlider');
 
   let modelTemplate = null;
   let currentAnchor = null;
@@ -183,6 +301,17 @@
   let markerDetected = false;
   let markerPose = null;
   const allAnchors = new Set();
+  
+  // Biến lưu trữ reference space
+  let viewerReferenceSpace = null;
+  
+  // Biến lưu trữ thông tin điều chỉnh
+  let adjustmentData = {
+    positionOffset: new THREE.Vector3(0, 0, 0),
+    rotation: 0,
+    height: 0,
+    visible: true
+  };
 
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(70, window.innerWidth/window.innerHeight, 0.01, 20);
@@ -229,6 +358,73 @@
   // Ẩn hiệu ứng quét QR
   function hideQRFrame() {
     markerOverlay.style.display = 'none';
+  }
+
+  // Cập nhật vị trí và hướng của mô hình dựa trên điều chỉnh
+  function updateModelTransform() {
+    if (!currentModel) return;
+    
+    const group = currentModel.parent;
+    if (!group) return;
+    
+    // Lấy ma trận gốc từ marker
+    const matrix = new THREE.Matrix4().fromArray(markerPose.transform.matrix);
+    const position = new THREE.Vector3();
+    const quaternion = new THREE.Quaternion();
+    const scale = new THREE.Vector3();
+    matrix.decompose(position, quaternion, scale);
+    
+    // Xác định các trục cơ sở của marker
+    const markerNormal = new THREE.Vector3(0, 0, 1).applyQuaternion(quaternion);
+    const markerUp = new THREE.Vector3(0, 1, 0).applyQuaternion(quaternion);
+    const markerRight = new THREE.Vector3(1, 0, 0).applyQuaternion(quaternion);
+    
+    // Điều chỉnh hướng trục theo yêu cầu
+    const inwardNormal = new THREE.Vector3().copy(markerNormal).negate();
+    const leftDirection = new THREE.Vector3().copy(markerRight).negate();
+    const upwardDirection = new THREE.Vector3().copy(markerUp);
+    
+    // Tạo ma trận biến đổi cơ sở
+    const modelMatrix = new THREE.Matrix4();
+    modelMatrix.set(
+        inwardNormal.x, leftDirection.x, upwardDirection.x, position.x,
+        inwardNormal.y, leftDirection.y, upwardDirection.y, position.y,
+        inwardNormal.z, leftDirection.z, upwardDirection.z, position.z,
+        0, 0, 0, 1
+    );
+    
+    // Áp dụng các điều chỉnh từ UI
+    const adjustmentMatrix = new THREE.Matrix4();
+    
+    // Xoay quanh trục Z (trục lên trên)
+    const rotationQuaternion = new THREE.Quaternion();
+    rotationQuaternion.setFromAxisAngle(upwardDirection, adjustmentData.rotation);
+    
+    // Dịch chuyển theo các trục
+    const adjustedPosition = new THREE.Vector3(
+        position.x + adjustmentData.positionOffset.x * leftDirection.x + 
+                   adjustmentData.positionOffset.y * inwardNormal.x +
+                   adjustmentData.positionOffset.z * upwardDirection.x,
+        position.y + adjustmentData.positionOffset.x * leftDirection.y + 
+                   adjustmentData.positionOffset.y * inwardNormal.y +
+                   adjustmentData.positionOffset.z * upwardDirection.y,
+        position.z + adjustmentData.positionOffset.x * leftDirection.z + 
+                   adjustmentData.positionOffset.y * inwardNormal.z +
+                   adjustmentData.positionOffset.z * upwardDirection.z
+    );
+    
+    // Kết hợp các phép biến đổi
+    adjustmentMatrix.compose(adjustedPosition, rotationQuaternion, new THREE.Vector3(1, 1, 1));
+    
+    // Áp dụng ma trận cho group
+    group.matrix.copy(adjustmentMatrix);
+    
+    // Cập nhật độ trong suốt
+    currentModel.traverse((n) => {
+      if (n.isMesh && n.material) {
+        n.material.opacity = adjustmentData.visible ? parseFloat(opacitySlider.value) : 0;
+      }
+    });
   }
 
   async function initARButton() {
@@ -278,15 +474,11 @@
     group.scale.set(0.2, 0.2, 0.2);
     return group;
   }
-  // Hệ tọa độ của file GTLF thì trục Y sẽ hướng lên trên, trục Z hướng dọc mô hình
+
   const loader = new GLTFLoader();
   loader.load("test.glb", (gltf)=>{
     modelTemplate = gltf.scene;
     modelTemplate.scale.set(0.2,0.2,0.2);
-    // Xoay từ hệ glTF (+Y up) sang hệ WebXR
-    modelTemplate.rotation.x = Math.PI / 2;
-    console.log(gltf.scene)
-    console.log(gltf.parser)
     infoEl.textContent = "Model đã load — di chuyển camera để tìm mặt phẳng hoặc marker.";
   }, undefined, (err)=>{
     console.error("GLTF load error:", err);
@@ -319,8 +511,8 @@
     currentModel = null;
   }
 
-    // Hàm đặt mô hình lên marker với hướng trục X trùng với pháp tuyến của marker
-function placeModelOnMarker(pose) {
+  // Hàm đặt mô hình lên marker
+  function placeModelOnMarker(pose) {
     if (!modelTemplate || isPlacing) return;
     
     isPlacing = true;
@@ -329,38 +521,11 @@ function placeModelOnMarker(pose) {
     const group = new THREE.Group();
     group.matrixAutoUpdate = false;
     
-    // Sử dụng ma trận từ pose của marker
-    // matrix/quaternion đã lấy từ pose
-    const matrix = new THREE.Matrix4().fromArray(pose.transform.matrix);
-    const position = new THREE.Vector3();
-    const quaternion = new THREE.Quaternion();
-    const scale = new THREE.Vector3();
-    matrix.decompose(position, quaternion, scale);
+    // Lưu trữ pose của marker
+    markerPose = pose;
     
-    // Các trục trong hệ local của marker (KHÔNG PHẢI trục world)
-    const localX = new THREE.Vector3(1,0,0); // nằm trên mặt
-    const localY = new THREE.Vector3(0,1,0); // PHÁP TUYẾN marker
-    const localZ = new THREE.Vector3(0,0,1); // nằm trên mặt
-    // Đưa sang world
-    const markerRight  = localX.clone().applyQuaternion(quaternion); // nằm ngang
-    const markerNormal = localY.clone().applyQuaternion(quaternion); // pháp tuyến mặt
-    const markerUp = localZ.clone().applyQuaternion(quaternion); // nằm ngang
-    
-    let modelXAxis = markerNormal.clone().negate();   // +X model = vào trong marker (ngược với normal)
-    let modelYAxis = markerRight.clone().negate();                // +Z model = lên trên
-    let modelZAxis = markerUp.clone().negate();                // +Z model = lên trên
-    
-    // Bảo đảm trực giao/chuẩn hoá
-    modelXAxis.normalize();
-    modelZAxis.normalize();
-    modelYAxis.copy(new THREE.Vector3().crossVectors(modelZAxis, modelXAxis)).normalize();
-    
-    // Tạo ma trận biến đổi
-    const modelMatrix = new THREE.Matrix4().makeBasis(modelXAxis, modelYAxis, modelZAxis);
-    modelMatrix.setPosition(position);
-    
-    // Áp dụng ma trận cho group
-    group.matrix.copy(modelMatrix);
+    // Đặt mô hình ban đầu
+    updateModelTransform();
     
     PLACEMENTS_ROOT.add(group);
     
@@ -376,120 +541,76 @@ function placeModelOnMarker(pose) {
       }).catch(console.error);
     }
     
-    infoEl.textContent = "Model đã được đặt trên marker! Trục X vào marker, Y sang trái, Z lên trên.";
+    infoEl.textContent = "Model đã được đặt trên marker! Sử dụng UI bên phải để điều chỉnh.";
     isPlacing = false;
     markerDetected = false;
     
+    // Hiển thị UI điều chỉnh
+    toggleUI.style.display = 'block';
+    visibilityToggle.style.display = 'block';
+    
     // Ẩn hiệu ứng quét sau khi đặt model
     hideQRFrame();
-    
-    // Debug: hiển thị các trục của marker
-    debugAxes(group, modelXAxis, modelYAxis, modelZAxis);
-}
-
-// Hàm debug để hiển thị các trục
-function debugAxes(group, xAxis, yAxis, zAxis) {
-    const axisLength = 0.2;
-    
-    // Trục X (đỏ) - hướng vào marker
-    const xGeometry = new THREE.BufferGeometry().setFromPoints([
-        new THREE.Vector3(0, 0, 0),
-        new THREE.Vector3(axisLength, 0, 0,)
-    ]);
-    const xMaterial = new THREE.LineBasicMaterial({ color: 0xff0000 });
-    const xAxisLine = new THREE.Line(xGeometry, xMaterial);
-    group.add(xAxisLine);
-    
-    // Trục Y (xanh lá) - hướng sang trái
-    const yGeometry = new THREE.BufferGeometry().setFromPoints([
-        new THREE.Vector3(0, 0, 0),
-        new THREE.Vector3(0, axisLength, 0)
-    ]);
-    const yMaterial = new THREE.LineBasicMaterial({ color: 0x00ff00 });
-    const yAxisLine = new THREE.Line(yGeometry, yMaterial);
-    group.add(yAxisLine);
-    
-    // Trục Z (xanh dương) - hướng lên trên
-    const zGeometry = new THREE.BufferGeometry().setFromPoints([
-        new THREE.Vector3(0, 0, 0),
-        new THREE.Vector3(0, 0, axisLength)
-    ]);
-    const zMaterial = new THREE.LineBasicMaterial({ color: 0x0000ff });
-    const zAxisLine = new THREE.Line(zGeometry, zMaterial);
-    group.add(zAxisLine);
-}
-    
-  // --- orientation helpers ---
-  let _lastHDir = new THREE.Vector3(1, 0, 0);
-  function getCameraHorizontalDir() {
-    const fwd = new THREE.Vector3();
-    camera.getWorldDirection(fwd);
-    fwd.y = 0;
-    const len = fwd.length();
-    if (len < 1e-3) return _lastHDir.clone();
-    fwd.divideScalar(len);
-    _lastHDir.copy(fwd);
-    return fwd;
   }
 
-function computePlacementMatrixFromMatrix(baseMatrix) {
-  const poseMat = new THREE.Matrix4().copy(baseMatrix);
-
-  // Lấy normal từ mặt phẳng (giữ là "up")
-  const rotMat = new THREE.Matrix4().extractRotation(poseMat);
-  const normal = new THREE.Vector3(0,1,0).applyMatrix4(rotMat).normalize();
-
-  // Lấy hướng forward theo camera (x-axis theo định nghĩa của bạn)
-  const camFwd = getCameraHorizontalDir();
-
-  // Chiếu forward lên mặt phẳng
-  const camProj = camFwd.clone().projectOnPlane(normal);
-  if (camProj.length() < 1e-3) {
-    camProj.copy(_lastHDir).projectOnPlane(normal);
-    if (camProj.length() < 1e-3) camProj.set(1,0,0);
-  }
-  camProj.normalize();
-
-  // Đặt trục theo quy ước mới
-  const xAxis = camProj.clone();                   // X = ra khỏi camera
-  const zAxis = normal.clone().normalize();        // Z = lên trên
-  const yAxis = new THREE.Vector3().crossVectors(zAxis, xAxis).normalize(); 
-  // Y = trái (cross theo Z × X)
-
-  // Tạo hệ cơ sở
-  const basis = new THREE.Matrix4().makeBasis(xAxis, yAxis, zAxis);
-
-  // Đặt vị trí
-  const pos = new THREE.Vector3().setFromMatrixPosition(poseMat);
-  basis.setPosition(pos);
-
-  return basis;
-}
-
-  async function placeAnchorFromLastHit() {
-    if (isPlacing) return;
-    isPlacing = true;
-    const hit = lastHitResult;
-    const refSpace = renderer.xr.getReferenceSpace();
-    if (!hit || !refSpace || !modelTemplate) { isPlacing=false; return; }
-    clearAllPlacementsAndAnchors();
-    const pose = hit.getPose(refSpace);
-    const anchor = await hit.createAnchor?.(refSpace).catch(()=>null);
-    const group = new THREE.Group();
-    group.matrixAutoUpdate=false;
-    if (pose) {
-      // dùng orientation helper để đặt matrix
-      const placementMatrix = computePlacementMatrixFromMatrix(new THREE.Matrix4().fromArray(pose.transform.matrix));
-      group.matrix.copy(placementMatrix);
+  // Xử lý sự kiện cho các nút điều khiển
+  document.getElementById('moveLeft').addEventListener('click', () => {
+    adjustmentData.positionOffset.x -= 0.05;
+    updateModelTransform();
+  });
+  
+  document.getElementById('moveRight').addEventListener('click', () => {
+    adjustmentData.positionOffset.x += 0.05;
+    updateModelTransform();
+  });
+  
+  document.getElementById('moveForward').addEventListener('click', () => {
+    adjustmentData.positionOffset.y += 0.05;
+    updateModelTransform();
+  });
+  
+  document.getElementById('moveBackward').addEventListener('click', () => {
+    adjustmentData.positionOffset.y -= 0.05;
+    updateModelTransform();
+  });
+  
+  heightSlider.addEventListener('input', () => {
+    adjustmentData.positionOffset.z = parseFloat(heightSlider.value);
+    updateModelTransform();
+  });
+  
+  rotationSlider.addEventListener('input', () => {
+    adjustmentData.rotation = parseFloat(rotationSlider.value);
+    updateModelTransform();
+  });
+  
+  opacitySlider.addEventListener('input', () => {
+    if (currentModel) {
+      currentModel.traverse((n) => {
+        if (n.isMesh && n.material) {
+          n.material.opacity = parseFloat(opacitySlider.value);
+        }
+      });
     }
-    PLACEMENTS_ROOT.add(group);
-    const placed = cloneModel(modelTemplate);
-    group.add(placed);
-    currentModel = placed;
-    currentAnchor = { anchor, group };
-    if (anchor) allAnchors.add(anchor);
-    isPlacing=false;
-  }
+  });
+  
+  toggleUI.addEventListener('click', () => {
+    adjustmentUI.style.display = adjustmentUI.style.display === 'none' ? 'flex' : 'none';
+    toggleUI.textContent = adjustmentUI.style.display === 'none' ? 'Hiện điều chỉnh' : 'Ẩn điều chỉnh';
+  });
+  
+  visibilityToggle.addEventListener('click', () => {
+    adjustmentData.visible = !adjustmentData.visible;
+    visibilityToggle.textContent = adjustmentData.visible ? 'Ẩn mô hình' : 'Hiện mô hình';
+    
+    if (currentModel) {
+      currentModel.traverse((n) => {
+        if (n.isMesh && n.material) {
+          n.material.opacity = adjustmentData.visible ? parseFloat(opacitySlider.value) : 0;
+        }
+      });
+    }
+  });
 
   const controller = renderer.xr.getController(0);
   controller.addEventListener("select", ()=>{ if (reticle.visible) placeAnchorFromLastHit(); });
@@ -507,76 +628,24 @@ function computePlacementMatrixFromMatrix(baseMatrix) {
     }
   });
 
-  document.getElementById("opacityControl").addEventListener("input",(e)=>{
-    const v = parseFloat(e.target.value);
-    if (currentModel) {
-      currentModel.traverse((n)=>{ if (n.isMesh && n.material) n.material.opacity=v; });
-    }
-  });
-
   resetBtn.addEventListener("click",()=>{ 
     const s=renderer.xr.getSession(); 
     if (s) s.end(); 
     hideQRFrame();
+    toggleUI.style.display = 'none';
+    visibilityToggle.style.display = 'none';
+    adjustmentUI.style.display = 'none';
   });
-    
-  // Tạo vòng tròn focus ở giữa màn hình (chỉ để người dùng thấy)
-  const focusRing = document.createElement("div");
-  focusRing.style.position = "absolute";
-  focusRing.style.top = "50%";
-  focusRing.style.left = "50%";
-  focusRing.style.width = "30px";
-  focusRing.style.height = "30px";
-  focusRing.style.border = "2px solid white";
-  focusRing.style.borderRadius = "50%";
-  focusRing.style.transform = "translate(-50%, -50%)";
-  focusRing.style.pointerEvents = "none"; // không chặn click
-  document.body.appendChild(focusRing);
-  // Raycaster và vector chuẩn hóa tâm màn hình
-  const raycaster = new THREE.Raycaster();
-  const center = new THREE.Vector2(0, 0); 
-  function getIntersects() {
-    const offsets = [
-      new THREE.Vector2(0, 0),              // tia trung tâm
-      new THREE.Vector2(0.01, 0),           // lệch phải
-      new THREE.Vector2(-0.01, 0),          // lệch trái
-      new THREE.Vector2(0, 0.01),           // lệch lên
-      new THREE.Vector2(0, -0.01)           // lệch xuống
-    ];
-    let allHits = [];
-    offsets.forEach(off => {
-      const ndc = new THREE.Vector2(center.x + off.x, center.y + off.y);
-      raycaster.setFromCamera(ndc, camera);
-      const hits = raycaster.intersectObjects(scene.children, true);
-      if (hits.length > 0) allHits.push(hits[0]); // lấy object gần nhất cho mỗi tia
-    });
-  
-    // chọn object gần nhất trong tất cả các tia
-    if (allHits.length > 0) {
-      allHits.sort((a, b) => a.distance - b.distance);
-      return allHits[0];
-    } else {
-    // fallback: kiểm tra nếu camera ở trong bounding box
-      //for (let obj of scene.children) {
-        //if (obj.isMesh) {
-          //obj.geometry.computeBoundingBox();
-          //const box = obj.geometry.boundingBox.clone();
-          //box.applyMatrix4(obj.matrixWorld);
-          //if (box.containsPoint(camera.position)) {
-            //return obj; // chọn object mà camera đang ở trong
-          //}
-        //}
-      //}
-    }
-    return null;
-  }
-    
-  // Sự kiện bắt đầu vào chế độ AR  
+
   renderer.xr.addEventListener("sessionstart", async ()=>{
     const session = renderer.xr.getSession();
     infoEl.textContent = "Đã vào chế độ AR, di chuyển để quét mặt phẳng hoặc marker...";
-    const viewerSpace = await session.requestReferenceSpace("viewer");
-    hitTestSource = await session.requestHitTestSource({ space: viewerSpace }).catch(()=>null);
+    
+    // Yêu cầu viewer reference space
+    viewerReferenceSpace = await session.requestReferenceSpace("viewer");
+    
+    // Sử dụng viewer reference space cho hit test
+    hitTestSource = await session.requestHitTestSource({ space: viewerReferenceSpace }).catch(()=>null);
     
     session.addEventListener("end", ()=>{ 
       hitTestSource = null; 
@@ -586,28 +655,32 @@ function computePlacementMatrixFromMatrix(baseMatrix) {
       placementBtn.style.display = 'none';
       markerDetected = false;
       hideQRFrame();
+      toggleUI.style.display = 'none';
+      visibilityToggle.style.display = 'none';
+      adjustmentUI.style.display = 'none';
+      // Reset reference space
+      viewerReferenceSpace = null;
     });
   });
 
   renderer.setAnimationLoop((t,frame)=>{
     if (frame) {
-      const refSpace = renderer.xr.getReferenceSpace();
-      if (hitTestSource && refSpace) {
+      if (hitTestSource && viewerReferenceSpace) {
         const hits = frame.getHitTestResults(hitTestSource);
         if (hits.length>0) {
           lastHitResult = hits[0];
-          const pose = hits[0].getPose(refSpace);
+          const pose = hits[0].getPose(viewerReferenceSpace);
           if (pose) { reticle.visible=true; reticle.matrix.fromArray(pose.transform.matrix); }
         } else { reticle.visible=false; }
       }
       
-      // Xử lý image tracking
+      // Xử lý image tracking - sử dụng viewer reference space
       const results = frame.getImageTrackingResults ? frame.getImageTrackingResults() : [];
-      if (results.length > 0) {
+      if (results.length > 0 && viewerReferenceSpace) {
         for (const result of results) {
           const state = result.trackingState;
           if (state === "tracked") {
-            const pose = frame.getPose(result.imageSpace, refSpace);
+            const pose = frame.getPose(result.imageSpace, viewerReferenceSpace);
             if (pose) {
               const p = pose.transform.position;
               markerStatusEl.textContent = 
@@ -648,30 +721,15 @@ function computePlacementMatrixFromMatrix(baseMatrix) {
         placementBtn.style.display = 'none';
         hideQRFrame();
       }
-      // Raycast từ tâm màn hình
-      const hit = getIntersects();
-      if (hit) {
-        const obj = hit.object;
-        if (obj.material) {
-          obj.material.color.set(0xff0000);
-        }
-        infoEl.textContent = `Chọn: ${obj.name}`;
-      }
     }
     renderer.render(scene,camera);
-
   });
-
-  renderer.domElement.addEventListener("touchstart",(e)=>{ if (e.touches.length===1) { isDragging=true; previousTouchX=e.touches[0].clientX; } });
-  renderer.domElement.addEventListener("touchmove",(e)=>{ if (isDragging && currentModel && e.touches.length===1) { const dx=e.touches[0].clientX-previousTouchX; previousTouchX=e.touches[0].clientX; currentModel.rotation.y += dx*0.01; } });
-  renderer.domElement.addEventListener("touchend",()=>{ isDragging=false; });
 
   window.addEventListener("resize",()=>{ 
     camera.aspect = window.innerWidth/window.innerHeight; 
     camera.updateProjectionMatrix(); 
     renderer.setSize(window.innerWidth, window.innerHeight); 
   });
-  
   </script>
 </body>
 </html>
