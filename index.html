@@ -353,7 +353,7 @@
   const loader = new GLTFLoader();
   loader.load("test.glb", (gltf)=>{
     modelTemplate = gltf.scene;
-    modelTemplate.scale.set(0.5,0.5,0.5);
+    modelTemplate.scale.set(0.2,0.2,0.2);
     // Xoay từ hệ glTF (+Y up) sang hệ WebXR
     modelTemplate.rotation.x = Math.PI / 2;
     console.log(gltf.scene)
@@ -374,7 +374,7 @@ function adjustMaterial(material) {
   if (material instanceof THREE.MeshStandardMaterial || 
       material instanceof THREE.MeshPhysicalMaterial) {
     material.roughness = 0.4; // càng nhỏ càng bóng
-    material.metalness = 0.3; // càng cao càng giống gương
+    material.metalness = 0.4; // càng cao càng giống gương
   }
   material.needsUpdate = true;
 }
