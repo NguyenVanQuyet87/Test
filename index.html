@@ -89,7 +89,6 @@
       left: 10px;
       top: 50%;
       transform: translateY(-50%);
-      -webkit-appearance: slider-vertical;
       writing-mode: vertical-lr;
       width: 8px;
       height: 200px;
@@ -571,16 +570,13 @@ function computePlacementMatrixFromMatrix(baseMatrix) {
 
   adjustBtn.addEventListener("click", () => {
     adjustMode = !adjustMode;
-    
     heightSlider.style.display = adjustMode ? 'block' : 'none';
     rotationSlider.style.display = adjustMode ? 'block' : 'none';
-    
     if (adjustMode) {
       heightSlider.value = 0;
       rotationSlider.value = 0;
       lastHeightValue = 0;
       lastRotationValue = 0;
-
       const hit = getIntersects();
       if (hit) {
         createAxesAtHit(hit);
@@ -716,19 +712,14 @@ function computePlacementMatrixFromMatrix(baseMatrix) {
               distance: camera.position.distanceTo(obj.position),
               point: obj.position.clone(),
               object: obj,
-              face: null,   // không có mặt nào cụ thể
-              faceIndex: null,
-              uv: null,
-              instanceId: null,
-              index: null
             };
           }
         }
       }
     }
-    return {
-      point: new THREE.Vector3(0, 0, 0)
-    };
+    //return {
+      //point: new THREE.Vector3(0, 0, 0)
+    //};
   }
     
   // Sự kiện bắt đầu vào chế độ AR  
