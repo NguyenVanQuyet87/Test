@@ -610,14 +610,13 @@ function computePlacementMatrixFromMatrix(baseMatrix) {
       axesGroup = null;
     }
 
-   if (!hit && currentAnchor && currentAnchor.group) {
-  const curGroup = currentAnchor.group;
+   if (!hit && currentAnchor) {
   const pos = new THREE.Vector3();
-  curGroup.getWorldPosition(pos);
+  group.getWorldPosition(pos);
   
   hit = {
     point: pos,
-    object: curGroup,  // Sử dụng group thay vì currentModel
+    object: group,  // Sử dụng group thay vì currentModel
   };
 }
 
