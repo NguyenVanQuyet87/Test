@@ -118,7 +118,7 @@
       top: 50%;
       transform: translateY(-50%);
       -webkit-appearance: slider-vertical;
-      writing-mode: bt-lr;
+      writing-mode: vertical-lr;
       width: 8px;
       height: 200px;
       z-index: 10;
@@ -271,6 +271,7 @@
   let markerPose = null;
   const allAnchors = new Set();
   let adjustMode = false;
+  let axesGroup = null;
   let lastHeightValue = 0;
   let lastRotationValue = 0;
 
@@ -654,8 +655,7 @@ function computePlacementMatrixFromMatrix(baseMatrix) {
   });
 
   // Hàm cập nhật hiển thị trục X và Y trên màn hình
-let adjustMode = false;
-let axesGroup = null;
+    
 
 function createAxesAtHit(hit) {
   // Xóa trục cũ nếu có
