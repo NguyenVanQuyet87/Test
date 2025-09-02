@@ -604,10 +604,7 @@ function computePlacementMatrixFromMatrix(baseMatrix) {
       if (hit) {
         const obj = hit.object;
         if (obj.material) {
-          obj.material.color.set(0xff0000);
-          obj.material.roughness = 0.1;  // càng thấp càng bóng
-          obj.material.metalness = 0.8;  // càng cao càng gương
-          obj.material.needsUpdate = true;
+          obj.material.color.set(0xa4f1f5);
         }
         infoEl.textContent = `Chọn: ${obj.name}`;
       }
@@ -743,7 +740,7 @@ function computePlacementMatrixFromMatrix(baseMatrix) {
   focusRing.style.left = "50%";
   focusRing.style.width = "30px";
   focusRing.style.height = "30px";
-  focusRing.style.border = "2px solid rgba(0,0,0,0.2)";
+  focusRing.style.border = "1px solid white";
   focusRing.style.borderRadius = "50%";
   focusRing.style.transform = "translate(-50%, -50%)";
   focusRing.style.pointerEvents = "none"; // không chặn click
