@@ -368,8 +368,8 @@ function adjustMaterial(material) {
   }
   if (material instanceof THREE.MeshStandardMaterial || 
       material instanceof THREE.MeshPhysicalMaterial) {
-    material.roughness = 0.2; // càng nhỏ càng bóng
-    material.metalness = 0.8; // càng cao càng giống gương
+    material.roughness = 0.5; // càng nhỏ càng bóng
+    material.metalness = 0.5; // càng cao càng giống gương
   }
   material.needsUpdate = true;
 }
@@ -571,7 +571,6 @@ function computePlacementMatrixFromMatrix(baseMatrix) {
       currentModel.traverse((child) => {
         if (child.isMesh) {
           const mat = child.material;
-    
           if (Array.isArray(mat)) {
             mat.forEach(m => adjustMaterial(m));
           } else {
