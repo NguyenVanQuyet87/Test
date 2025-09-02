@@ -785,15 +785,11 @@ function computePlacementMatrixFromMatrix(baseMatrix) {
               
               // Tự động đặt model khi phát hiện marker
               if (!currentModel && modelTemplate && !markerDetected) {
-                markerDetected = true;
-                placementBtn.style.display = 'block';
-                placementBtn.textContent = 'Đặt mô hình lên marker';
-                
+                markerDetected = true;  
                 // Tự động đặt mô hình sau 2 giây
                 setTimeout(() => {
                   if (markerDetected && markerPose) {
                     placeModelOnMarker(markerPose);
-                    placementBtn.style.display = 'none';
                   }
                 }, 2000);
               }
@@ -801,14 +797,12 @@ function computePlacementMatrixFromMatrix(baseMatrix) {
           } else {
             markerStatusEl.textContent = `Marker trạng thái: ${state}`;
             markerDetected = false;
-            placementBtn.style.display = 'none';
             hideQRFrame();
           }
         }
       } else {
         markerStatusEl.textContent = "Chưa phát hiện marker";
         markerDetected = false;
-        placementBtn.style.display = 'none';
         hideQRFrame();
       }
       // Raycast từ tâm màn hình
