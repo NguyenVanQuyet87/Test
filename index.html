@@ -611,6 +611,15 @@ function computePlacementMatrixFromMatrix(baseMatrix) {
       scene.remove(axesGroup);
       axesGroup = null;
     }
+    if (!hit && currentModel) {
+      const pos = new THREE.Vector3();
+      currentModel.getWorldPosition(pos);
+      hit = {
+        point: pos,
+        object: currentModel,
+        distance: camera.position.distanceTo(pos)
+      };
+    }
 
     if (!hit) return;
 
@@ -661,11 +670,9 @@ function computePlacementMatrixFromMatrix(baseMatrix) {
       const matrix = new THREE.Matrix4().makeBasis(xAxis, yAxis, zAxis);
       axesGroup.quaternion.setFromRotationMatrix(matrix);
     }
-
     scene.add(axesGroup);
     infoEl.textContent = "Đã vào chế độ Adjust. Hệ trục được tạo tại vị trí hit.";
   }
-    
   // Tạo vòng tròn focus ở giữa màn hình (chỉ để người dùng thấy)
   const focusRing = document.createElement("div");
   focusRing.style.position = "absolute";
@@ -702,24 +709,9 @@ function computePlacementMatrixFromMatrix(baseMatrix) {
       allHits.sort((a, b) => a.distance - b.distance);
       return allHits[0];
     } else {
-      // fallback: kiểm tra nếu camera ở trong bounding box
-      for (let obj of scene.children) {
-        if (obj.isMesh) {
-          const box = new THREE.Box3().setFromObject(obj);
-          if (box.containsPoint(camera.position)) {
-            // Trả về một Intersection giả lập
-            return {
-              distance: camera.position.distanceTo(obj.position),
-              point: obj.position.clone(),
-              object: obj,
-            };
-          }
-        }
-      }
+      return null;
     }
-    //return {
-      //point: new THREE.Vector3(0, 0, 0)
-    //};
+    return null;
   }
     
   // Sự kiện bắt đầu vào chế độ AR  
@@ -728,13 +720,11 @@ function computePlacementMatrixFromMatrix(baseMatrix) {
     infoEl.textContent = "Đã vào chế độ AR, di chuyển để quét mặt phẳng hoặc marker...";
     const viewerSpace = await session.requestReferenceSpace("viewer");
     hitTestSource = await session.requestHitTestSource({ space: viewerSpace }).catch(()=>null);
-    
     session.addEventListener("end", ()=>{ 
       hitTestSource = null; 
       clearAllPlacementsAndAnchors(); 
       infoEl.textContent = "AR session đã kết thúc.";
       markerStatusEl.textContent = "Chưa phát hiện marker";
-      
       markerDetected = false;
       hideQRFrame();
       // Xóa hệ trục khi kết thúc session
@@ -807,9 +797,9 @@ function computePlacementMatrixFromMatrix(baseMatrix) {
       if (hit) {
         const obj = hit.object;
         if (obj.material) {
-          // obj.material.color.set(0xff0000);
+          obj.material.color.set(0xff0000);
         }
-        // infoEl.textContent = `Chọn: ${obj.name}`;
+        infoEl.textContent = `Chọn: ${obj.name}`;
       }
     }
     renderer.render(scene,camera);
@@ -830,7 +820,7 @@ function computePlacementMatrixFromMatrix(baseMatrix) {
     matrix.compose(position, quaternion, scale);
     group.matrix.copy(matrix);
   }
-
+    
   // Hàm quay mô hình quanh trục local
   function rotateAroundLocalAxis(localAxis, angleRad) {
     if (!currentAnchor || !currentAnchor.group) return;
@@ -845,7 +835,7 @@ function computePlacementMatrixFromMatrix(baseMatrix) {
     matrix.compose(position, quaternion, scale);
     group.matrix.copy(matrix);
   }
-
+    
   renderer.domElement.addEventListener("touchstart",(e)=>{ 
     if (e.touches.length===1) { 
       isDragging=true; 
@@ -853,6 +843,7 @@ function computePlacementMatrixFromMatrix(baseMatrix) {
       previousTouchY=e.touches[0].clientY; 
     } 
   });
+    
   renderer.domElement.addEventListener("touchmove",(e)=>{ 
     if (isDragging && currentModel && e.touches.length===1) { 
       const dx=e.touches[0].clientX-previousTouchX; 
@@ -869,14 +860,13 @@ function computePlacementMatrixFromMatrix(baseMatrix) {
       }
     } 
   });
+    
   renderer.domElement.addEventListener("touchend",()=>{ isDragging=false; });
-
   window.addEventListener("resize",()=>{ 
     camera.aspect = window.innerWidth/window.innerHeight; 
     camera.updateProjectionMatrix(); 
     renderer.setSize(window.innerWidth, window.innerHeight); 
   });
-  
   </script>
 </body>
 </html>
