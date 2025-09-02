@@ -56,7 +56,7 @@
     }
     #selectBtn {
       position: absolute;
-      bottom: 50px;
+      bottom: 200px;
       right: 10px;
       z-index: 10;
       background: rgba(255,255,255,0.9);
@@ -71,7 +71,7 @@
     }
     #placementBtn {
       position: absolute;
-      bottom: 100px;
+      bottom: 300px;
       right: 10px;
       z-index: 10;
       background: rgba(255,255,255,0.9);
@@ -86,7 +86,7 @@
     }
     #adjustBtn {
       position: absolute;
-      bottom: 150px;
+      bottom: 250px;
       right: 10px;
       z-index: 10;
       background: rgba(255,255,255,0.9);
@@ -569,7 +569,7 @@ function computePlacementMatrixFromMatrix(baseMatrix) {
   });
 
   placementBtn.addEventListener("click", ()=>{
-    isPlacing = false;
+    isPlacing = !isPlacing;
   });
   selectBtn.addEventListener("click", ()=>{
       // Raycast từ tâm màn hình
@@ -713,7 +713,7 @@ function computePlacementMatrixFromMatrix(baseMatrix) {
   focusRing.style.left = "50%";
   focusRing.style.width = "30px";
   focusRing.style.height = "30px";
-  focusRing.style.border = "2px solid grey";
+  focusRing.style.border = "1px solid rgba(0,0,0,0.5)";
   focusRing.style.borderRadius = "50%";
   focusRing.style.transform = "translate(-50%, -50%)";
   focusRing.style.pointerEvents = "none"; // không chặn click
