@@ -351,9 +351,9 @@
   }
   // Hệ tọa độ của file GTLF thì trục Y sẽ hướng lên trên, trục Z hướng dọc mô hình
   const loader = new GLTFLoader();
-  loader.load("test.glb", (gltf)=>{
+  loader.load("test1.glb", (gltf)=>{
     modelTemplate = gltf.scene;
-    modelTemplate.scale.set(0.2,0.2,0.2);
+    modelTemplate.scale.set(0.5,0.5,0.5);
     // Xoay từ hệ glTF (+Y up) sang hệ WebXR
     modelTemplate.rotation.x = Math.PI / 2;
     console.log(gltf.scene)
