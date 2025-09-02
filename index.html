@@ -326,7 +326,10 @@
   initARButton();
 
   scene.add(new THREE.HemisphereLight(0xffffff, 0xbbbbff, 1));
-
+  scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+  const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+  dirLight.position.set(5, 10, 7);
+  scene.add(dirLight);
   const ringGeo = new THREE.RingGeometry(0.08,0.1,32).rotateX(-Math.PI/2);
   const ringMat = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
   reticle = new THREE.Mesh(ringGeo, ringMat);
@@ -364,12 +367,12 @@
 // Hàm chỉnh vật liệu
 function adjustMaterial(material) {
   if (material instanceof THREE.MeshPhongMaterial) {
-    material.shininess = 150; // bóng loáng hơn
+    material.shininess = 50; // bóng loáng hơn
   }
   if (material instanceof THREE.MeshStandardMaterial || 
       material instanceof THREE.MeshPhysicalMaterial) {
     material.roughness = 0.5; // càng nhỏ càng bóng
-    material.metalness = 0.5; // càng cao càng giống gương
+    material.metalness = 0.2; // càng cao càng giống gương
   }
   material.needsUpdate = true;
 }
