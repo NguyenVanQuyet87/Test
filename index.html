@@ -609,15 +609,18 @@ function computePlacementMatrixFromMatrix(baseMatrix) {
       scene.remove(axesGroup);
       axesGroup = null;
     }
-    if (!hit && currentModel) {
-      const pos = new THREE.Vector3();
-      currentModel.getWorldPosition(pos);
-      hit = {
-        point: pos,
-        object: currentModel,
-        distance: camera.position.distanceTo(pos)
-      };
-    }
+
+   if (!hit && currentAnchor && currentAnchor.group) {
+  const group = currentAnchor.group;
+  const pos = new THREE.Vector3();
+  group.getWorldPosition(pos);
+  
+  hit = {
+    point: pos,
+    object: group,  // Sử dụng group thay vì currentModel
+    distance: camera.position.distanceTo(pos)
+  };
+}
 
     if (!hit) return;
 
