@@ -83,34 +83,6 @@
       border-radius: 6px;
       cursor: pointer;
     }
-    #axesOverlay {
-      display: none;
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      pointer-events: none;
-      z-index: 10;
-    }
-    .axis-line {
-      position: absolute;
-      transform-origin: 0 0;
-      height: 2px;
-    }
-    .x-axis {
-      background: red;
-    }
-    .y-axis {
-      background: green;
-    }
-    .axis-label {
-      position: absolute;
-      color: white;
-      font-family: monospace;
-      font-size: 14px;
-      transform: translate(-50%, -50%);
-    }
     #heightSlider {
       display: none;
       position: absolute;
@@ -223,14 +195,6 @@
     </div>
   </div>
 
-  <!-- Overlay trục X và Y -->
-  <div id="axesOverlay">
-    <div class="axis-line x-axis" id="xAxis"></div>
-    <div class="axis-line y-axis" id="yAxis"></div>
-    <div class="axis-label" id="xLabel">X</div>
-    <div class="axis-label" id="yLabel">Y</div>
-  </div>
-
   <!-- Thanh kéo độ cao (Z) -->
   <input type="range" id="heightSlider" min="-1" max="1" step="0.01" value="0">
 
@@ -249,11 +213,6 @@
   const adjustBtn = document.getElementById("adjustBtn");
   const markerOverlay = document.getElementById("markerOverlay");
   const qrFrame = document.querySelector('.qr-frame');
-  const axesOverlay = document.getElementById("axesOverlay");
-  const xAxis = document.getElementById("xAxis");
-  const yAxis = document.getElementById("yAxis");
-  const xLabel = document.getElementById("xLabel");
-  const yLabel = document.getElementById("yLabel");
   const heightSlider = document.getElementById("heightSlider");
   const rotationSlider = document.getElementById("rotationSlider");
 
@@ -491,7 +450,7 @@ function debugAxes(group, xAxis, yAxis, zAxis) {
     const xAxisLine = new THREE.Line(xGeometry, xMaterial);
     group.add(xAxisLine);
     
-    // Trục Y (xanh lá) - hướng sang trái
+    // Trục Y (xahn lá) - hướng sang trái
     const yGeometry = new THREE.BufferGeometry().setFromPoints([
         new THREE.Vector3(0, 0, 0),
         new THREE.Vector3(0, axisLength, 0)
@@ -542,7 +501,7 @@ function computePlacementMatrixFromMatrix(baseMatrix) {
   camProj.normalize();
 
   // Đặt trục theo quy ước mới
-  const xAxis = camProj.clone();                   // X = ra khỏi camera
+  const xAxis = camProj.clone();                   // X = ra khỏe camera
   const zAxis = normal.clone().normalize();        // Z = lên trên
   const yAxis = new THREE.Vector3().crossVectors(zAxis, xAxis).normalize(); 
   // Y = trái (cross theo Z × X)
@@ -612,32 +571,28 @@ function computePlacementMatrixFromMatrix(baseMatrix) {
   });
 
   adjustBtn.addEventListener("click", () => {
-  adjustMode = !adjustMode;
+    adjustMode = !adjustMode;
+    
+    heightSlider.style.display = adjustMode ? 'block' : 'none';
+    rotationSlider.style.display = adjustMode ? 'block' : 'none';
+    
+    if (adjustMode) {
+      heightSlider.value = 0;
+      rotationSlider.value = 0;
+      lastHeightValue = 0;
+      lastRotationValue = 0;
 
-  axesOverlay.style.display = adjustMode ? 'block' : 'none';
-  heightSlider.style.display = adjustMode ? 'block' : 'none';
-  rotationSlider.style.display = adjustMode ? 'block' : 'none';
-
-  if (adjustMode) {
-    heightSlider.value = 0;
-    rotationSlider.value = 0;
-    lastHeightValue = 0;
-    lastRotationValue = 0;
-
-    const hit = getIntersects();
-    if (hit) {
-      // tạo hệ trục tại vị trí hit-test
-      axesGroup = createAxesGroup();
-      axesGroup.position.copy(hit.point);
-      scene.add(axesGroup);
+      const hit = getIntersects();
+      if (hit) {
+        createAxesAtHit(hit);
+      }
+    } else {
+      // Xóa hệ trục khi tắt chế độ Adjust
+      if (axesGroup) {
+        scene.remove(axesGroup);
+        axesGroup = null;
+      }
     }
-  } else {
-    // tắt chế độ → xóa hệ trục
-    if (axesGroup) {
-      scene.remove(axesGroup);
-      axesGroup = null;
-    }
-  }
   });
 
   heightSlider.addEventListener("input", (e) => {
@@ -654,47 +609,67 @@ function computePlacementMatrixFromMatrix(baseMatrix) {
     lastRotationValue = value;
   });
 
-  // Hàm cập nhật hiển thị trục X và Y trên màn hình
-    
+  // Hàm tạo hệ trục tại vị trí hit
+  function createAxesAtHit(hit) {
+    // Xóa trục cũ nếu có
+    if (axesGroup) {
+      scene.remove(axesGroup);
+      axesGroup = null;
+    }
 
-function createAxesAtHit(hit) {
-  // Xóa trục cũ nếu có
-  if (axesGroup) {
-    scene.remove(axesGroup);
-    axesGroup = null;
+    if (!hit) return;
+
+    // Tạo group mới cho trục
+    axesGroup = new THREE.Group();
+    axesGroup.position.copy(hit.point);
+
+    // Chiều dài trục (kéo dài 3m mỗi phía)
+    const axisLen = 3.0;
+
+    // Trục X (đỏ)
+    const xGeom = new THREE.BufferGeometry().setFromPoints([
+      new THREE.Vector3(-axisLen, 0, 0),
+      new THREE.Vector3(axisLen, 0, 0)
+    ]);
+    const xMat = new THREE.LineBasicMaterial({ color: 0xff0000 });
+    axesGroup.add(new THREE.Line(xGeom, xMat));
+
+    // Trục Y (xanh lá)
+    const yGeom = new THREE.BufferGeometry().setFromPoints([
+      new THREE.Vector3(0, -axisLen, 0),
+      new THREE.Vector3(0, axisLen, 0)
+    ]);
+    const yMat = new THREE.LineBasicMaterial({ color: 0x00ff00 });
+    axesGroup.add(new THREE.Line(yGeom, yMat));
+
+    // Căn orientation theo object được hit
+    if (hit.object) {
+      // Lấy hướng của object
+      const objectQuaternion = new THREE.Quaternion();
+      hit.object.getWorldQuaternion(objectQuaternion);
+      
+      // Áp dụng hướng cho hệ trục
+      axesGroup.quaternion.copy(objectQuaternion);
+    } else {
+      // Nếu không có object, sử dụng hướng của camera
+      const cameraDirection = new THREE.Vector3();
+      camera.getWorldDirection(cameraDirection);
+      cameraDirection.y = 0;
+      cameraDirection.normalize();
+      
+      // Tạo ma trận định hướng cho trục
+      const zAxis = new THREE.Vector3(0, 1, 0); // Trục Z thẳng đứng
+      const xAxis = new THREE.Vector3().crossVectors(zAxis, cameraDirection).normalize(); // Trục X vuông góc với hướng camera và trục Z
+      const yAxis = new THREE.Vector3().crossVectors(zAxis, xAxis).normalize(); // Trục Y vuông góc với trục X và Z
+      
+      // Tạo quaternion từ các trục
+      const matrix = new THREE.Matrix4().makeBasis(xAxis, yAxis, zAxis);
+      axesGroup.quaternion.setFromRotationMatrix(matrix);
+    }
+
+    scene.add(axesGroup);
+    infoEl.textContent = "Đã vào chế độ Adjust. Hệ trục được tạo tại vị trí hit.";
   }
-
-  if (!hit) return;
-
-  // Tạo group mới cho trục
-  axesGroup = new THREE.Group();
-  axesGroup.position.copy(hit.point);
-
-  const axisLen = 0.1;
-
-  // Trục X (đỏ)
-  const xGeom = new THREE.BufferGeometry().setFromPoints([
-    new THREE.Vector3(0, 0, 0),
-    new THREE.Vector3(axisLen, 0, 0)
-  ]);
-  const xMat = new THREE.LineBasicMaterial({ color: 0xff0000 });
-  axesGroup.add(new THREE.Line(xGeom, xMat));
-
-  // Trục Y (xanh lá)
-  const yGeom = new THREE.BufferGeometry().setFromPoints([
-    new THREE.Vector3(0, 0, 0),
-    new THREE.Vector3(0, axisLen, 0)
-  ]);
-  const yMat = new THREE.LineBasicMaterial({ color: 0x00ff00 });
-  axesGroup.add(new THREE.Line(yGeom, yMat));
-
-  // Căn orientation theo object được hit
-  if (hit.object) {
-    axesGroup.quaternion.copy(hit.object.getWorldQuaternion(new THREE.Quaternion()));
-  }
-
-  scene.add(axesGroup);
-}
     
   // Tạo vòng tròn focus ở giữa màn hình (chỉ để người dùng thấy)
   const focusRing = document.createElement("div");
@@ -732,17 +707,21 @@ function createAxesAtHit(hit) {
       allHits.sort((a, b) => a.distance - b.distance);
       return allHits[0];
     } else {
-    // fallback: kiểm tra nếu camera ở trong bounding box
-      //for (let obj of scene.children) {
-        //if (obj.isMesh) {
-          //obj.geometry.computeBoundingBox();
-          //const box = obj.geometry.boundingBox.clone();
-          //box.applyMatrix4(obj.matrixWorld);
-          //if (box.containsPoint(camera.position)) {
-            //return obj; // chọn object mà camera đang ở trong
-          //}
-        //}
-      //}
+      // fallback: kiểm tra nếu camera ở trong bounding box
+      for (let obj of scene.children) {
+        if (obj.isMesh) {
+          // Tạo bounding box cho mesh
+          const box = new THREE.Box3().setFromObject(obj);
+          if (box.containsPoint(camera.position)) {
+            // Trả về một hit result giả lập
+            return {
+              point: obj.position.clone(),
+              object: obj,
+              distance: camera.position.distanceTo(obj.position)
+            };
+          }
+        }
+      }
     }
     return null;
   }
@@ -753,6 +732,7 @@ function createAxesAtHit(hit) {
     infoEl.textContent = "Đã vào chế độ AR, di chuyển để quét mặt phẳng hoặc marker...";
     const viewerSpace = await session.requestReferenceSpace("viewer");
     hitTestSource = await session.requestHitTestSource({ space: viewerSpace }).catch(()=>null);
+    
     session.addEventListener("end", ()=>{ 
       hitTestSource = null; 
       clearAllPlacementsAndAnchors(); 
@@ -761,22 +741,29 @@ function createAxesAtHit(hit) {
       placementBtn.style.display = 'none';
       markerDetected = false;
       hideQRFrame();
+      // Xóa hệ trục khi kết thúc session
+      if (axesGroup) {
+        scene.remove(axesGroup);
+        axesGroup = null;
+      }
+      adjustMode = false;
+      heightSlider.style.display = 'none';
+      rotationSlider.style.display = 'none';
     });
   });
 
   renderer.setAnimationLoop((t,frame)=>{
     if (frame) {
       const refSpace = renderer.xr.getReferenceSpace();
-      if (!adjustMode) {
-        if (hitTestSource && refSpace) {
-          const hits = frame.getHitTestResults(hitTestSource);
-          if (hits.length>0) {
-            lastHitResult = hits[0];
-            const pose = hits[0].getPose(refSpace);
-            if (pose) { reticle.visible=true; reticle.matrix.fromArray(pose.transform.matrix); }
-          } else { reticle.visible=false; }
-        }
+      if (hitTestSource && refSpace) {
+        const hits = frame.getHitTestResults(hitTestSource);
+        if (hits.length>0) {
+          lastHitResult = hits[0];
+          const pose = hits[0].getPose(refSpace);
+          if (pose) { reticle.visible=true; reticle.matrix.fromArray(pose.transform.matrix); }
+        } else { reticle.visible=false; }
       }
+      
       // Xử lý image tracking
       const results = frame.getImageTrackingResults ? frame.getImageTrackingResults() : [];
       if (results.length > 0) {
@@ -829,14 +816,9 @@ function createAxesAtHit(hit) {
       if (hit) {
         const obj = hit.object;
         if (obj.material) {
-          obj.material.color.set(0xff0000);
+          // obj.material.color.set(0xff0000);
         }
-        infoEl.textContent = `Chọn: ${obj.name}`;
-      }
-
-      // Cập nhật hiển thị trục nếu đang trong chế độ adjust
-      if (adjustMode) {
-        updateAxesDisplay();
+        // infoEl.textContent = `Chọn: ${obj.name}`;
       }
     }
     renderer.render(scene,camera);
@@ -888,9 +870,11 @@ function createAxesAtHit(hit) {
       previousTouchY=e.touches[0].clientY; 
       if (adjustMode) {
         // Dịch theo trục X (horizontal drag)
-        translateAlongLocalAxis(new THREE.Vector3(0, 1, 0), dx * 0.001); // Factor nhạy
+        translateAlongLocalAxis(new THREE.Vector3(1, 0, 0), dx * 0.001); // Factor nhạy
         // Dịch theo trục Y (vertical drag, negate để up drag positive Y)
-        translateAlongLocalAxis(new THREE.Vector3(1, 0, 0), -dy * 0.001);
+        translateAlongLocalAxis(new THREE.Vector3(0, 1, 0), -dy * 0.001);
+      } else {
+        currentModel.rotation.y += dx*0.01;
       }
     } 
   });
