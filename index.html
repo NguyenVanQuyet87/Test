@@ -354,12 +354,26 @@
     console.log(gltf.scene)
     console.log(gltf.parser)
     infoEl.textContent = "Model đã load — di chuyển camera để tìm mặt phẳng hoặc marker.";
+    
   }, undefined, (err)=>{
     console.error("GLTF load error:", err);
     infoEl.textContent = "Lỗi load GLTF — tạo model mẫu thay thế.";
     modelTemplate = createFallbackModel();
   });
-
+    
+// Hàm chỉnh vật liệu
+function adjustMaterial(material) {
+  if (material instanceof THREE.MeshPhongMaterial) {
+    material.shininess = 150; // bóng loáng hơn
+  }
+  if (material instanceof THREE.MeshStandardMaterial || 
+      material instanceof THREE.MeshPhysicalMaterial) {
+    material.roughness = 0.2; // càng nhỏ càng bóng
+    material.metalness = 0.8; // càng cao càng giống gương
+  }
+  material.needsUpdate = true;
+}
+    
   function cloneModel(template) {
     const clone = template.clone(true);
     clone.traverse((n)=>{
@@ -554,7 +568,18 @@ function computePlacementMatrixFromMatrix(baseMatrix) {
     currentModel = placed;
     currentAnchor = { anchor, group };
     if (anchor) allAnchors.add(anchor);
-  }
+      currentModel.traverse((child) => {
+        if (child.isMesh) {
+          const mat = child.material;
+    
+          if (Array.isArray(mat)) {
+            mat.forEach(m => adjustMaterial(m));
+          } else {
+            adjustMaterial(mat);
+          }
+        }
+      });
+    }
 
   const controller = renderer.xr.getController(0);
   controller.addEventListener("select", ()=>{ if (reticle.visible) placeAnchorFromLastHit(); });
