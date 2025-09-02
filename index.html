@@ -54,6 +54,21 @@
       font-size: 13px;
       border-radius: 6px;
     }
+    #selectBtn {
+      position: absolute;
+      bottom: 50px;
+      right: 10px;
+      z-index: 10;
+      background: rgba(255,255,255,0.9);
+      color: #111;
+      padding: 8px 12px;
+      font-family: system-ui, sans-serif;
+      font-size: 13px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      cursor: pointer;
+      
+    }
     #placementBtn {
       position: absolute;
       bottom: 100px;
@@ -181,6 +196,7 @@
   <button id="resetBtn" type="button">Reset AR</button>
   <button id="placementBtn" type="button">Đặt mô hình</button>
   <button id="adjustBtn" type="button">Adjust</button>
+  <button id="selectBtn" type="button">Select</button>
   <input type="range" id="opacityControl" min="0" max="1" step="0.05" value="1">
   
   <!-- Overlay hiệu ứng quét QR code -->
@@ -209,6 +225,7 @@
   const markerStatusEl = document.getElementById("markerStatus");
   const resetBtn = document.getElementById("resetBtn");
   const placementBtn = document.getElementById("placementBtn");
+    const selectBtn = document.getElementById("selectBtn");
   const adjustBtn = document.getElementById("adjustBtn");
   const markerOverlay = document.getElementById("markerOverlay");
   const qrFrame = document.querySelector('.qr-frame');
@@ -554,7 +571,17 @@ function computePlacementMatrixFromMatrix(baseMatrix) {
   placementBtn.addEventListener("click", ()=>{
     isPlacing = false;
   });
-
+  selectBtn.addEventListener("click", ()=>{
+      // Raycast từ tâm màn hình
+      const hit = getIntersects();
+      if (hit) {
+        const obj = hit.object;
+        if (obj.material) {
+          obj.material.color.set(0xff0000);
+        }
+        infoEl.textContent = `Chọn: ${obj.name}`;
+      }
+  });
   document.getElementById("opacityControl").addEventListener("input",(e)=>{
     const v = parseFloat(e.target.value);
     if (currentModel) {
@@ -610,14 +637,13 @@ function computePlacementMatrixFromMatrix(baseMatrix) {
       axesGroup = null;
     }
 
-   if (!hit && currentAnchor) {
-    const group = currentAnchor.group;
+   if (!hit && currentAnchor && currentAnchor.group) {
+      const group = currentAnchor.group;
       const matrix = group.matrix.clone();
       const quaternion = new THREE.Quaternion();
       const position = new THREE.Vector3();
       const scale = new THREE.Vector3();
       matrix.decompose(position, quaternion, scale);
-
       hit = {
         point: position,
         object: group,
@@ -681,6 +707,7 @@ function computePlacementMatrixFromMatrix(baseMatrix) {
   }
   // Tạo vòng tròn focus ở giữa màn hình (chỉ để người dùng thấy)
   const focusRing = document.createElement("div");
+   const focusPoint = document.createElement("div"); 
   focusRing.style.position = "absolute";
   focusRing.style.top = "50%";
   focusRing.style.left = "50%";
@@ -690,7 +717,19 @@ function computePlacementMatrixFromMatrix(baseMatrix) {
   focusRing.style.borderRadius = "50%";
   focusRing.style.transform = "translate(-50%, -50%)";
   focusRing.style.pointerEvents = "none"; // không chặn click
+    
+  focusPoint.style.position = "absolute";
+  focusPoint.style.top = "50%";
+  focusPoint.style.left = "50%";
+  focusPoint.style.width = "2px";
+  focusPoint.style.height = "2px";
+  focusPoint.style.border = "2px solid white";
+  focusPoint.style.borderRadius = "50%";
+  focusPoint.style.transform = "translate(-50%, -50%)";
+  focusPoint.style.pointerEvents = "none"; // không chặn click   
+    
   document.body.appendChild(focusRing);
+    document.body.appendChild(focusPoint);
   // Raycaster và vector chuẩn hóa tâm màn hình
   const raycaster = new THREE.Raycaster();
   const center = new THREE.Vector2(0, 0); 
@@ -798,15 +837,7 @@ function computePlacementMatrixFromMatrix(baseMatrix) {
         markerDetected = false;
         hideQRFrame();
       }
-      // Raycast từ tâm màn hình
-      const hit = getIntersects();
-      if (hit) {
-        const obj = hit.object;
-        if (obj.material) {
-          //obj.material.color.set(0xff0000);
-        }
-        //infoEl.textContent = `Chọn: ${obj.name}`;
-      }
+
     }
     renderer.render(scene,camera);
 
