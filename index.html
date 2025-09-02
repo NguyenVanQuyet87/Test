@@ -709,20 +709,26 @@ function computePlacementMatrixFromMatrix(baseMatrix) {
       // fallback: kiểm tra nếu camera ở trong bounding box
       for (let obj of scene.children) {
         if (obj.isMesh) {
-          // Tạo bounding box cho mesh
           const box = new THREE.Box3().setFromObject(obj);
           if (box.containsPoint(camera.position)) {
-            // Trả về một hit result giả lập
+            // Trả về một Intersection giả lập
             return {
+              distance: camera.position.distanceTo(obj.position),
               point: obj.position.clone(),
               object: obj,
-              distance: camera.position.distanceTo(obj.position)
+              face: null,   // không có mặt nào cụ thể
+              faceIndex: null,
+              uv: null,
+              instanceId: null,
+              index: null
             };
           }
         }
       }
     }
-    return null;
+    return {
+      point: new THREE.Vector3(0, 0, 0)
+    };
   }
     
   // Sự kiện bắt đầu vào chế độ AR  
