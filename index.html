@@ -624,12 +624,11 @@ function computePlacementMatrixFromMatrix(baseMatrix) {
       //};
     //}
 
-    if (!hit) return;
+    //if (!hit) return;
 
     // Tạo group mới cho trục
     axesGroup = new THREE.Group();
-    axesGroup.position.copy(hit.point);
-
+    
     // Chiều dài trục (kéo dài 3m mỗi phía)
     const axisLen = 3.0;
 
@@ -656,6 +655,7 @@ function computePlacementMatrixFromMatrix(baseMatrix) {
       hit.object.getWorldQuaternion(objectQuaternion);
       //group.getWorldQuaternion(objectQuaternion);
       // Áp dụng hướng cho hệ trục
+      axesGroup.position.copy(hit.point);
       axesGroup.quaternion.copy(objectQuaternion);
     } else {
       // Nếu không có object, sử dụng hướng của camera
@@ -663,7 +663,9 @@ function computePlacementMatrixFromMatrix(baseMatrix) {
       camera.getWorldDirection(cameraDirection);
       cameraDirection.y = 0;
       cameraDirection.normalize();
-      
+      const cameraPos = new THREE.Vector3();
+      camera.getWorldPosition(cameraPos);
+      axesGroup.position.copy(cameraPos);
       // Tạo ma trận định hướng cho trục
       const zAxis = new THREE.Vector3(0, 1, 0); // Trục Z thẳng đứng
       const xAxis = new THREE.Vector3().crossVectors(zAxis, cameraDirection).normalize(); // Trục X vuông góc với hướng camera và trục Z
