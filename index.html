@@ -67,7 +67,7 @@
       border: 1px solid #ccc;
       border-radius: 6px;
       cursor: pointer;
-      display: none;
+      
     }
     #adjustBtn {
       position: absolute;
@@ -551,10 +551,7 @@ function computePlacementMatrixFromMatrix(baseMatrix) {
   });
 
   placementBtn.addEventListener("click", ()=>{
-    if (markerPose) {
-      placeModelOnMarker(markerPose);
-      placementBtn.style.display = 'none';
-    }
+    
   });
 
   document.getElementById("opacityControl").addEventListener("input",(e)=>{
