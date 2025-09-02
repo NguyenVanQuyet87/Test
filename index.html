@@ -610,22 +610,19 @@ function computePlacementMatrixFromMatrix(baseMatrix) {
       axesGroup = null;
     }
 
-   if (!hit && currentAnchor & 1==2) {
-  const pos = new THREE.Vector3();
-  group.getWorldPosition(pos);
+   if (!hit && currentAnchor && 1==2) {
+    const group = currentAnchor.group;
+      const matrix = group.matrix.clone();
+      const quaternion = new THREE.Quaternion();
+      const position = new THREE.Vector3();
+      const scale = new THREE.Vector3();
+      matrix.decompose(position, quaternion, scale);
 
-  const group = currentAnchor.group;
-    const matrix = group.matrix.clone();
-    const quaternion = new THREE.Quaternion();
-    const position = new THREE.Vector3();
-    const scale = new THREE.Vector3();
-    matrix.decompose(position, quaternion, scale);
-
-  hit = {
-    point: pos,
-    object: group,
-  };
-}
+      hit = {
+        point: pos,
+        object: group,
+      };
+    }
 
     //if (!hit) return;
 
