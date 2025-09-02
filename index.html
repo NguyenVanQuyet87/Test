@@ -546,8 +546,10 @@ function computePlacementMatrixFromMatrix(baseMatrix) {
   
   window.addEventListener("click", ()=>{ 
     const s=renderer.xr.getSession(); 
-    if (s && reticle.visible && !isPlacing) placeAnchorFromLastHit(); 
-isPlacing = true;
+    if (s && reticle.visible && !isPlacing) {
+      placeAnchorFromLastHit(); 
+      isPlacing = true;
+    }
   });
 
   placementBtn.addEventListener("click", ()=>{
