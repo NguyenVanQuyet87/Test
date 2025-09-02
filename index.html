@@ -648,8 +648,8 @@ function computePlacementMatrixFromMatrix(baseMatrix) {
     if (hit.object) {
       // Lấy hướng của object
       const objectQuaternion = new THREE.Quaternion();
-      //hit.object.getWorldQuaternion(objectQuaternion);
-      group.getWorldQuaternion(objectQuaternion);
+      hit.object.getWorldQuaternion(objectQuaternion);
+      //group.getWorldQuaternion(objectQuaternion);
       // Áp dụng hướng cho hệ trục
       axesGroup.quaternion.copy(objectQuaternion);
     } else {
