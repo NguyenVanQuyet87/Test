@@ -650,6 +650,14 @@ function computePlacementMatrixFromMatrix(baseMatrix) {
       const objectQuaternion = new THREE.Quaternion();
       //hit.object.getWorldQuaternion(objectQuaternion);
       group.getWorldQuaternion(objectQuaternion);
+      
+      // thêm xoay bù Y-up -> Z-up
+      const correction = new THREE.Quaternion();
+      correction.setFromAxisAngle(new THREE.Vector3(1, 0, 0), -Math.PI / 2);
+      
+      // nhân quaternion để hiệu chỉnh
+      objectQuaternion.multiply(correction);
+
       // Áp dụng hướng cho hệ trục
       axesGroup.quaternion.copy(objectQuaternion);
     } else {
