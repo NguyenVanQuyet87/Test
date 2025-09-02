@@ -346,7 +346,7 @@
     const cube = new THREE.Mesh(geometry, material);
     const group = new THREE.Group();
     group.add(cube);
-    group.scale.set(0.2, 0.2, 0.2);
+    group.scale.set(1, 1, 1);
     return group;
   }
   // Hệ tọa độ của file GTLF thì trục Y sẽ hướng lên trên, trục Z hướng dọc mô hình
@@ -373,8 +373,8 @@ function adjustMaterial(material) {
   }
   if (material instanceof THREE.MeshStandardMaterial || 
       material instanceof THREE.MeshPhysicalMaterial) {
-    material.roughness = 0.5; // càng nhỏ càng bóng
-    material.metalness = 0.2; // càng cao càng giống gương
+    material.roughness = 0.4; // càng nhỏ càng bóng
+    material.metalness = 0.3; // càng cao càng giống gương
   }
   material.needsUpdate = true;
 }
