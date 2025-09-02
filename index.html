@@ -755,16 +755,16 @@ function computePlacementMatrixFromMatrix(baseMatrix) {
   renderer.setAnimationLoop((t,frame)=>{
     if (frame) {
       const refSpace = renderer.xr.getReferenceSpace();
-      if(!adjustMode) {
+     
       if (hitTestSource && refSpace) {
         const hits = frame.getHitTestResults(hitTestSource);
-        if (hits.length>0) {
+        if (hits.length>0 && !adjustMode) {
           lastHitResult = hits[0];
           const pose = hits[0].getPose(refSpace);
           if (pose) { reticle.visible=true; reticle.matrix.fromArray(pose.transform.matrix); }
         } else { reticle.visible=false; }
       }
-      }
+      
       // Xử lý image tracking
       const results = frame.getImageTrackingResults ? frame.getImageTrackingResults() : [];
       if (results.length > 0) {
