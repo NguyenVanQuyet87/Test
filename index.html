@@ -665,7 +665,7 @@ function computePlacementMatrixFromMatrix(baseMatrix) {
       cameraDirection.normalize();
       const cameraPos = new THREE.Vector3();
       camera.getWorldPosition(cameraPos);
-      axesGroup.position.copy(cameraPos);
+     
       // Tạo ma trận định hướng cho trục
       const zAxis = new THREE.Vector3(0, 1, 0); // Trục Z thẳng đứng
       const xAxis = new THREE.Vector3().crossVectors(zAxis, cameraDirection).normalize(); // Trục X vuông góc với hướng camera và trục Z
@@ -673,6 +673,7 @@ function computePlacementMatrixFromMatrix(baseMatrix) {
       
       // Tạo quaternion từ các trục
       const matrix = new THREE.Matrix4().makeBasis(xAxis, yAxis, zAxis);
+       axesGroup.position.copy(cameraPos);
       axesGroup.quaternion.setFromRotationMatrix(matrix);
     }
     scene.add(axesGroup);
@@ -798,13 +799,13 @@ function computePlacementMatrixFromMatrix(baseMatrix) {
         hideQRFrame();
       }
       // Raycast từ tâm màn hình
-      //const hit = getIntersects();
+      const hit = getIntersects();
       if (hit) {
         const obj = hit.object;
         if (obj.material) {
-          obj.material.color.set(0xff0000);
+          //obj.material.color.set(0xff0000);
         }
-        infoEl.textContent = `Chọn: ${obj.name}`;
+        //infoEl.textContent = `Chọn: ${obj.name}`;
       }
     }
     renderer.render(scene,camera);
@@ -860,8 +861,6 @@ function computePlacementMatrixFromMatrix(baseMatrix) {
         translateAlongLocalAxis(new THREE.Vector3(1, 0, 0), dx * 0.001); // Factor nhạy
         // Dịch theo trục Y (vertical drag, negate để up drag positive Y)
         translateAlongLocalAxis(new THREE.Vector3(0, 1, 0), -dy * 0.001);
-      } else {
-        currentModel.rotation.y += dx*0.01;
       }
     } 
   });
