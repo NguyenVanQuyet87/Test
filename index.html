@@ -579,7 +579,7 @@ function computePlacementMatrixFromMatrix(baseMatrix) {
         if (obj.material) {
           obj.material.color.set(0xff0000);
         }
-        infoEl.textContent = `Chọn: ${object.material.type}`;
+        infoEl.textContent = `Chọn: ${obj.material.type}`;
       }
   });
   document.getElementById("opacityControl").addEventListener("input",(e)=>{
@@ -709,21 +709,21 @@ function computePlacementMatrixFromMatrix(baseMatrix) {
   const focusRing = document.createElement("div");
    const focusPoint = document.createElement("div"); 
   focusRing.style.position = "absolute";
-  focusRing.style.top = "calc(50% - 15px)";
-  focusRing.style.left = "calc(50% - 15px)";
+  focusRing.style.top = "50%";
+  focusRing.style.left = "50%";
   focusRing.style.width = "30px";
   focusRing.style.height = "30px";
-  focusRing.style.border = "1px solid rgba(0,0,0,0.3)";
+  focusRing.style.border = "2px solid rgba(0,0,0,0.2)";
   focusRing.style.borderRadius = "50%";
   focusRing.style.transform = "translate(-50%, -50%)";
   focusRing.style.pointerEvents = "none"; // không chặn click
     
   focusPoint.style.position = "absolute";
-  focusPoint.style.top = "calc(50% - 1px)";
-  focusPoint.style.left = "calc(50% - 1px)";
+  focusPoint.style.top = "50%";
+  focusPoint.style.left = "50%";
   focusPoint.style.width = "2px";
   focusPoint.style.height = "2px";
-  focusPoint.style.border = "1px solid white";
+  focusPoint.style.border = "2px solid white";
   focusPoint.style.borderRadius = "50%";
   focusPoint.style.transform = "translate(-50%, -50%)";
   focusPoint.style.pointerEvents = "none"; // không chặn click   
