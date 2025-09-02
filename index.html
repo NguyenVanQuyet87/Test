@@ -427,7 +427,7 @@ function placeModelOnMarker(pose) {
     }
     
     infoEl.textContent = "Model đã được đặt trên marker! Trục X vào marker, Y sang trái, Z lên trên.";
-    isPlacing = false;
+    
     markerDetected = false;
     
     // Ẩn hiệu ứng quét sau khi đặt model
@@ -538,7 +538,6 @@ function computePlacementMatrixFromMatrix(baseMatrix) {
     currentModel = placed;
     currentAnchor = { anchor, group };
     if (anchor) allAnchors.add(anchor);
-    isPlacing=false;
   }
 
   const controller = renderer.xr.getController(0);
