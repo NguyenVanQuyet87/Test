@@ -373,8 +373,8 @@ function adjustMaterial(material) {
   }
   if (material instanceof THREE.MeshStandardMaterial || 
       material instanceof THREE.MeshPhysicalMaterial) {
-    material.roughness = 0.4; // càng nhỏ càng bóng
-    material.metalness = 0.4; // càng cao càng giống gương
+    material.roughness = 0.5; // càng nhỏ càng bóng
+    material.metalness = 0.5; // càng cao càng giống gương
   }
   material.needsUpdate = true;
 }
