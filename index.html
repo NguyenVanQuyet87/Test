@@ -578,9 +578,7 @@ function computePlacementMatrixFromMatrix(baseMatrix) {
       lastHeightValue = 0;
       lastRotationValue = 0;
       const hit = getIntersects();
-      if (hit) {
-        createAxesAtHit(hit);
-      }
+      createAxesAtHit(hit);
     } else {
       // Xóa hệ trục khi tắt chế độ Adjust
       if (axesGroup) {
