@@ -381,9 +381,15 @@ function adjustMaterial(material) {
     const clone = template.clone(true);
     clone.traverse((n)=>{
       if (n.isMesh && n.material) {
+        const mat = n.material;
         n.material = n.material.clone();
         n.material.transparent = true;
         n.material.userData.__cloned = true;
+        if (Array.isArray(mat)) {
+          mat.forEach(m => adjustMaterial(m));
+        } else {
+          adjustMaterial(mat);
+        }
       }
     });
     return clone;
@@ -571,17 +577,7 @@ function computePlacementMatrixFromMatrix(baseMatrix) {
     currentModel = placed;
     currentAnchor = { anchor, group };
     if (anchor) allAnchors.add(anchor);
-      currentModel.traverse((child) => {
-        if (child.isMesh) {
-          const mat = child.material;
-          if (Array.isArray(mat)) {
-            mat.forEach(m => adjustMaterial(m));
-          } else {
-            adjustMaterial(mat);
-          }
-        }
-      });
-    }
+  }
 
   const controller = renderer.xr.getController(0);
   controller.addEventListener("select", ()=>{ if (reticle.visible) placeAnchorFromLastHit(); });
@@ -604,7 +600,7 @@ function computePlacementMatrixFromMatrix(baseMatrix) {
       if (hit) {
         const obj = hit.object;
         if (obj.material) {
-          obj.material.color.set(0xa4f1f5);
+          obj.material.color.set(0xff7e21);
         }
         infoEl.textContent = `Chọn: ${obj.name}`;
       }
