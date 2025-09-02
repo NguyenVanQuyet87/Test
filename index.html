@@ -547,11 +547,12 @@ function computePlacementMatrixFromMatrix(baseMatrix) {
   
   window.addEventListener("click", ()=>{ 
     const s=renderer.xr.getSession(); 
-    if (s && reticle.visible) placeAnchorFromLastHit(); 
+    if (s && reticle.visible && !isPlacing) placeAnchorFromLastHit(); 
+isPlacing = true;
   });
 
   placementBtn.addEventListener("click", ()=>{
-    
+    isPlacing = false;
   });
 
   document.getElementById("opacityControl").addEventListener("input",(e)=>{
@@ -735,7 +736,7 @@ function computePlacementMatrixFromMatrix(baseMatrix) {
       clearAllPlacementsAndAnchors(); 
       infoEl.textContent = "AR session đã kết thúc.";
       markerStatusEl.textContent = "Chưa phát hiện marker";
-      placementBtn.style.display = 'none';
+      
       markerDetected = false;
       hideQRFrame();
       // Xóa hệ trục khi kết thúc session
@@ -755,7 +756,7 @@ function computePlacementMatrixFromMatrix(baseMatrix) {
      
       if (hitTestSource && refSpace) {
         const hits = frame.getHitTestResults(hitTestSource);
-        if (hits.length>0 && !adjustMode) {
+        if (hits.length>0 && !adjustMode && !isPlacing) {
           lastHitResult = hits[0];
           const pose = hits[0].getPose(refSpace);
           if (pose) { reticle.visible=true; reticle.matrix.fromArray(pose.transform.matrix); }
