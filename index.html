@@ -881,7 +881,9 @@ infoEl.textContent = "Anchor được tạo thành công và mô hình đã gắ
       let altitude = null; 
       let depth = null;
       if (!result) {
-        { distance, altitude, depth } = result;
+        distance =  result.distance;
+        altitude =  result.altitude;
+        depth =  result.depth;
       }
       // Hàm hiển thị HUD
       function updateHUD(distance, altitude, depth) {
