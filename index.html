@@ -256,6 +256,10 @@
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.xr.enabled = true;
   document.body.appendChild(renderer.domElement);
+// Thiết lập tone mapping và gamma
+renderer.outputEncoding = THREE.sRGBEncoding;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.0;
 
   const PLACEMENTS_ROOT = new THREE.Group();
   scene.add(PLACEMENTS_ROOT);
@@ -373,9 +377,10 @@ function adjustMaterial(material) {
   }
   if (material instanceof THREE.MeshStandardMaterial || 
       material instanceof THREE.MeshPhysicalMaterial) {
-    material.roughness = 0.2; // càng nhỏ càng bóng
-    material.metalness = 0.5; // càng cao càng giống gương
+    material.roughness = 0.3; // càng nhỏ càng bóng
+    material.metalness = 0.4; // càng cao càng giống gương
   }
+  material.flatShading = false;
   material.needsUpdate = true;
 }
     
@@ -386,6 +391,8 @@ function adjustMaterial(material) {
         n.material = n.material.clone();
         n.material.transparent = true;
         n.material.userData.__cloned = true;
+        n.geometry.computeVertexNormals();
+        n.geometry.normalizeNormals();
         if (Array.isArray(n.material)) {
           n.material.forEach(m => adjustMaterial(m));
         } else {
@@ -558,13 +565,20 @@ function computePlacementMatrixFromMatrix(baseMatrix) {
 
   async function placeAnchorFromLastHit() {
     if (isPlacing) return;
-    isPlacing = true;
     const hit = lastHitResult;
     const refSpace = renderer.xr.getReferenceSpace();
     if (!hit || !refSpace || !modelTemplate) { isPlacing=false; return; }
     clearAllPlacementsAndAnchors();
     const pose = hit.getPose(refSpace);
     const anchor = await hit.createAnchor?.(refSpace).catch(()=>null);
+
+ // Nếu không tạo được anchor thì bỏ qua
+  if (!pose || !anchor) {
+   infoEl.textContent = "Không thể tạo anchor, mô hình sẽ không được đặt.";
+    isPlacing = false;
+    return;
+  }
+
     const group = new THREE.Group();
     group.matrixAutoUpdate=false;
     if (pose) {
@@ -578,6 +592,7 @@ function computePlacementMatrixFromMatrix(baseMatrix) {
     currentModel = placed;
     currentAnchor = { anchor, group };
     if (anchor) allAnchors.add(anchor);
+infoEl.textContent = "Anchor được tạo thành công và mô hình đã gắn!";
   }
 
   const controller = renderer.xr.getController(0);
