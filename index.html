@@ -256,10 +256,6 @@
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.xr.enabled = true;
   document.body.appendChild(renderer.domElement);
-// Thiết lập tone mapping và gamma
-renderer.outputEncoding = THREE.sRGBEncoding;
-renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.0;
 
   const PLACEMENTS_ROOT = new THREE.Group();
   scene.add(PLACEMENTS_ROOT);
@@ -391,8 +387,6 @@ function adjustMaterial(material) {
         n.material = n.material.clone();
         n.material.transparent = true;
         n.material.userData.__cloned = true;
-        n.geometry.computeVertexNormals();
-        n.geometry.normalizeNormals();
         if (Array.isArray(n.material)) {
           n.material.forEach(m => adjustMaterial(m));
         } else {
