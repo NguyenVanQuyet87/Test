@@ -871,7 +871,7 @@ infoEl.textContent = "Anchor được tạo thành công và mô hình đã gắ
         if (currentAnchor && currentAnchor.group) {
           const anchorWorldPos = new THREE.Vector3();
           currentAnchor.group.getWorldPosition(anchorWorldPos);
-          altitude = hitPoint.y - anchorWorldPos.position.y;
+          altitude = hitPoint.y - anchorWorldPos.y;
           const camDir = new THREE.Vector3();
           camera.getWorldDirection(camDir);
           const camToHit = new THREE.Vector3().subVectors(hitPoint, camera.position);
