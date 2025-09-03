@@ -208,12 +208,12 @@
 <body>
   <div id="info">Đang chờ khởi động AR...</div>
   <div id="markerStatus">Chưa phát hiện marker</div>
-  <button id="resetBtn" type="button">Reset AR</button>
-  <button id="placementBtn" type="button">Đặt mô hình</button>
+  //<button id="resetBtn" type="button">Reset AR</button>
+  <button id="placementBtn" type="button">Placement</button>
   <button id="adjustBtn" type="button">Adjust</button>
   <button id="selectBtn" type="button">Select</button>
   <input type="range" id="opacityControl" min="0" max="1" step="0.05" value="1">
-  <div id="hud">Đang đo...</div>
+  <div id="hud"></div>
   
   <!-- Overlay hiệu ứng quét QR code -->
   <div id="markerOverlay">
@@ -615,7 +615,8 @@ function computePlacementMatrixFromMatrix(baseMatrix) {
     }
   });
 
-  placementBtn.addEventListener("click", ()=>{
+  placementBtn.addEventListener("click", (e)=>{
+    e.stopPropagation();
     isPlacing = !isPlacing;
     if (!isPlacing) {
       infoEl.textContent = "Bạn đang ở chế độ đặt mô hình.";
@@ -641,11 +642,11 @@ function computePlacementMatrixFromMatrix(baseMatrix) {
     }
   });
 
-  resetBtn.addEventListener("click",()=>{ 
-    const s=renderer.xr.getSession(); 
-    if (s) s.end(); 
-    hideQRFrame();
-  });
+  //resetBtn.addEventListener("click",()=>{ 
+    //const s=renderer.xr.getSession(); 
+    //if (s) s.end(); 
+    //hideQRFrame();
+  //});
 
   adjustBtn.addEventListener("click", () => {
     adjustMode = !adjustMode;
