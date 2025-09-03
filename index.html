@@ -844,7 +844,9 @@ infoEl.textContent = "Anchor được tạo thành công và mô hình đã gắ
           if (pose) { 
             reticle.visible=true; 
             reticle.matrix.fromArray(pose.transform.matrix); 
-            hitPoint = new THREE.Vector3().fromArray(pose.transform.position.toArray());
+            // lấy tọa độ điểm hitPoint
+            const pos = pose.transform.position;
+            hitPoint = new THREE.Vector3(pos.x, pos.y, pos.z);
           }
         } else { 
           reticle.visible=false; 
