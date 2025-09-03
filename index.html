@@ -864,38 +864,34 @@ infoEl.textContent = "Anchor được tạo thành công và mô hình đã gắ
       
       // Hàm xác định khoảng cách, độ cao, độ sâu
       function getHitPoint(hitPoint, camera, currentAnchor) {
-        if (!hitPoint || !currentAnchor) return null;
-        const distance = camera.position.distanceTo(hitPoint);
-        let altitude = null; 
-        let depth = null;
-        if (currentAnchor && currentAnchor.group) {
-          const anchorWorldPos = new THREE.Vector3();
-          currentAnchor.group.getWorldPosition(anchorWorldPos);
-          altitude = hitPoint.y - anchorWorldPos.y;
-          const camDir = new THREE.Vector3();
-          camera.getWorldDirection(camDir);
-          const camToHit = new THREE.Vector3().subVectors(hitPoint, camera.position);
-          depth = camToHit.dot(camDir);
-        }
-        return { distance, altitude, depth };
+        if (!hitPoint) return null;
+          const distance = camera.position.distanceTo(hitPoint);
+          // Xác định gốc chuẩn
+          let referencePos = new THREE.Vector3();
+          if (currentAnchor && currentAnchor.group) {
+            currentAnchor.group.getWorldPosition(referencePos);
+          } else {
+            referencePos.copy(camera.position);
+          }
+          // Tính offset theo trục Y
+          const altitudeDepth = hitPoint.y - referencePos.y;
+          return { distance, altitudeDepth };
       }
       const result = getHitPoint(hitPoint, camera, currentAnchor);
       let distance = null; 
-      let altitude = null; 
-      let depth = null;
+      let altitudeDepth = null; 
       if (result) {
         distance =  result.distance;
-        altitude =  result.altitude;
-        depth =  result.depth;
+        altitudeDepth =  result.altitudeDepth;
       }
       // Hàm hiển thị HUD
-      function updateHUD(distance, altitude, depth) {
+      function updateHUD(distance, altitudeDepth) {
         const hud = document.getElementById("hud");
+        let label = altitudeDepth >= 0 ? "Altitude" : "Depth";
         hud.innerHTML = `Distance: ${distance !== null ? distance.toFixed(2) + " m" : "-"}<br>
-          Altitude: ${altitude !== null ? altitude.toFixed(2) + " m" : "-"}<br>
-          Depth: ${depth !== null ? depth.toFixed(2) + " m" : "-"}`;
+          ${label}: ${altitudeDepth !== null ? Math.abs(altitudeDepth).toFixed(2) + " m" : "-"}`;
       }
-      updateHUD(distance, altitude, depth);
+      updateHUD(distance, altitudeDepth);
       // Xử lý image tracking
       const results = frame.getImageTrackingResults ? frame.getImageTrackingResults() : [];
       if (results.length > 0) {
