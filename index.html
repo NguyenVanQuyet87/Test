@@ -120,12 +120,12 @@
     }
     #hud {
       position: absolute;
-      top: 10px;
+      top: 50px;
       left: 50%;
       transform: translateX(-50%);
       padding: 10px 15px;
-      background: rgba(0,0,0,0.5);
-      color: #0f0;
+      background: rgba(0,0,0,0.1);
+      color: #ffffff;
       font-family: monospace;
       font-size: 14px;
       border-radius: 8px;
@@ -600,7 +600,7 @@ function computePlacementMatrixFromMatrix(baseMatrix) {
     currentModel = placed;
     currentAnchor = { anchor, group };
     if (anchor) allAnchors.add(anchor);
-infoEl.textContent = "Anchor được tạo thành công và mô hình đã gắn!";
+    infoEl.textContent = "Mô hình đã được đặt và neo thành công!";
   }
 
   const controller = renderer.xr.getController(0);
@@ -617,6 +617,10 @@ infoEl.textContent = "Anchor được tạo thành công và mô hình đã gắ
 
   placementBtn.addEventListener("click", ()=>{
     isPlacing = !isPlacing;
+    if (!isPlacing) {
+      infoEl.textContent = "Bạn đang ở chế độ đặt mô hình.";
+    } else {
+      infoEl.textContent = "Bạn vừa thoát khỏi chế độ đặt mô hình.";
   });
   selectBtn.addEventListener("click", ()=>{
       // Raycast từ tâm màn hình
@@ -837,7 +841,7 @@ infoEl.textContent = "Anchor được tạo thành công và mô hình đã gắ
       let hitPoint = null;
       if (hitTestSource && refSpace) {
         const hits = frame.getHitTestResults(hitTestSource);
-        if (hits.length>0 && !adjustMode && !isPlacing) {
+        if (hits.length>0 && !adjustMode) {
           lastHitResult = hits[0];
           const pose = hits[0].getPose(refSpace);
           if (pose) { 
@@ -847,8 +851,6 @@ infoEl.textContent = "Anchor được tạo thành công và mô hình đã gắ
             const pos = pose.transform.position;
             hitPoint = new THREE.Vector3(pos.x, pos.y, pos.z);
           }
-        } else { 
-          reticle.visible=false; 
         }
       }
       // 2. Nếu không có → dùng raycaster vào mô hình 3D
