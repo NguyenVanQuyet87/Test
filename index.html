@@ -591,7 +591,6 @@ function computePlacementMatrixFromMatrix(baseMatrix) {
     const group = new THREE.Group();
     group.matrixAutoUpdate=false;
     if (pose) {
-      // dùng orientation helper để đặt matrix
       const placementMatrix = computePlacementMatrixFromMatrix(new THREE.Matrix4().fromArray(pose.transform.matrix));
       group.matrix.copy(placementMatrix);
     }
@@ -878,7 +877,7 @@ infoEl.textContent = "Anchor được tạo thành công và mô hình đã gắ
         }
         return { distance, altitude, depth };
       }
-      const result = getHitPoint(hitPoint, camera, currentAnchor);
+      const result = getHitPoint(hitPoint, camera, currentAnchor.anchor);
       let distance = null; 
       let altitude = null; 
       let depth = null;
