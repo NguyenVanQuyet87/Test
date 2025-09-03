@@ -863,7 +863,7 @@ infoEl.textContent = "Anchor được tạo thành công và mô hình đã gắ
       
       // Hàm xác định khoảng cách, độ cao, độ sâu
       function getHitPoint(hitPoint, camera, anchor) {
-        if (!hitPoint) return null; // không có hit nào cả
+        if (!hitPoint) return null;
         const distance = camera.position.distanceTo(hitPoint);
         let altitude = null; 
         let depth = null;
@@ -880,7 +880,7 @@ infoEl.textContent = "Anchor được tạo thành công và mô hình đã gắ
       let distance = null; 
       let altitude = null; 
       let depth = null;
-      if (!result) {
+      if (result) {
         distance =  result.distance;
         altitude =  result.altitude;
         depth =  result.depth;
@@ -888,7 +888,7 @@ infoEl.textContent = "Anchor được tạo thành công và mô hình đã gắ
       // Hàm hiển thị HUD
       function updateHUD(distance, altitude, depth) {
         const hud = document.getElementById("hud");
-        hud.innerHTML = `Distance: ${distance !== null ? altitude.toFixed(2) + " m" : "-"}<br>
+        hud.innerHTML = `Distance: ${distance !== null ? distance.toFixed(2) + " m" : "-"}<br>
           Altitude: ${altitude !== null ? altitude.toFixed(2) + " m" : "-"}<br>
           Depth: ${depth !== null ? depth.toFixed(2) + " m" : "-"}`;
       }
