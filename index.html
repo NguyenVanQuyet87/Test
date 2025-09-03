@@ -865,12 +865,13 @@ infoEl.textContent = "Anchor được tạo thành công và mô hình đã gắ
       // Hàm xác định khoảng cách, độ cao, độ sâu
       function getHitPoint(hitPoint, camera, currentAnchor) {
         if (!hitPoint || !currentAnchor) return null;
-        const anchor = currentAnchor.anchor;
         const distance = camera.position.distanceTo(hitPoint);
         let altitude = null; 
         let depth = null;
-        if (anchor) {
-          altitude = hitPoint.y - anchor.position.y;
+        if (currentAnchor && currentAnchor.group) {
+          const anchorWorldPos = new THREE.Vector3();
+          currentAnchor.group.getWorldPosition(anchorWorldPos);
+          altitude = hitPoint.y - anchorWorldPos.position.y;
           const camDir = new THREE.Vector3();
           camera.getWorldDirection(camDir);
           const camToHit = new THREE.Vector3().subVectors(hitPoint, camera.position);
