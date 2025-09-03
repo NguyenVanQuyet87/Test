@@ -840,7 +840,7 @@ function computePlacementMatrixFromMatrix(baseMatrix) {
   renderer.setAnimationLoop((t,frame)=>{
     if (frame) {
       const refSpace = renderer.xr.getReferenceSpace();
-      let hitPoint = null;
+      let targetPoint = null;
       if (hitTestSource && refSpace) {
         const hits = frame.getHitTestResults(hitTestSource);
         if (hits.length>0 && !adjustMode) {
@@ -849,27 +849,26 @@ function computePlacementMatrixFromMatrix(baseMatrix) {
           if (pose) { 
             reticle.visible=true; 
             reticle.matrix.fromArray(pose.transform.matrix); 
-            // lấy tọa độ điểm hitPoint
+            // lấy tọa độ điểm targetPoint
             const pos = pose.transform.position;
-            hitPoint = new THREE.Vector3(pos.x, pos.y, pos.z);
+            targetPoint = new THREE.Vector3(pos.x, pos.y, pos.z);
           }
         }
       }
       // 2. Nếu không có → dùng raycaster vào mô hình 3D
-      if (!hitPoint) {
         const raycaster = new THREE.Raycaster();
         const screenCenter = new THREE.Vector2(0, 0); // tâm màn hình
         raycaster.setFromCamera(screenCenter, camera);
         const intersects = raycaster.intersectObjects(scene.children, true);
         if (intersects.length > 0) {
-          hitPoint = intersects[0].point.clone();
+          targetPoint = intersects[0].point.clone();
         }
-      }
+      
       
       // Hàm xác định khoảng cách, độ cao, độ sâu
-      function getHitPoint(hitPoint, camera, currentAnchor) {
-        if (!hitPoint) return null;
-          const distance = camera.position.distanceTo(hitPoint);
+      function getDistance(targetPoint, camera, currentAnchor) {
+        if (!targetPoint) return null;
+          const distance = camera.position.distanceTo(targetPoint);
           // Xác định gốc chuẩn
           let referencePos = new THREE.Vector3();
           if (currentAnchor && currentAnchor.group) {
@@ -878,10 +877,10 @@ function computePlacementMatrixFromMatrix(baseMatrix) {
             referencePos.copy(camera.position);
           }
           // Tính offset theo trục Y
-          const altitudeDepth = hitPoint.y - referencePos.y;
+          const altitudeDepth = targetPoint.y - referencePos.y;
           return { distance, altitudeDepth };
       }
-      const result = getHitPoint(hitPoint, camera, currentAnchor);
+      const result = getDistance(targetPoint, camera, currentAnchor);
       let distance = null; 
       let altitudeDepth = null; 
       if (result) {
