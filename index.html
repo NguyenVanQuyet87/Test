@@ -661,7 +661,7 @@ function computePlacementMatrixFromMatrix(baseMatrix) {
     } else {
       // Xóa hệ trục khi tắt chế độ Adjust
       if (axesGroup) {
-        scene.remove(axesGroup);
+        PLACEMENTS_ROOT.remove(axesGroup);
         axesGroup = null;
       }
     }
@@ -685,7 +685,7 @@ function computePlacementMatrixFromMatrix(baseMatrix) {
   function createAxesAtHit(hit) {
     // Xóa trục cũ nếu có
     if (axesGroup) {
-      scene.remove(axesGroup);
+      PLACEMENTS_ROOT.remove(axesGroup);
       axesGroup = null;
     }
 
@@ -708,7 +708,7 @@ function computePlacementMatrixFromMatrix(baseMatrix) {
     axesGroup = new THREE.Group();
     
     // Chiều dài trục (kéo dài 3m mỗi phía)
-    const axisLen = 1.0;
+    const axisLen = 0.5;
 
     // Trục X (đỏ)
     //const xGeom = new THREE.BufferGeometry().setFromPoints([
@@ -730,17 +730,17 @@ function computePlacementMatrixFromMatrix(baseMatrix) {
       const axisGroup = new THREE.Group();
     
       // Thân trụ
-      const cylGeom = new THREE.CylinderGeometry(0.005, 0.005, length, 16);
+      const cylGeom = new THREE.CylinderGeometry(0.001, 0.001, length, 16);
       const cylMat = new THREE.MeshBasicMaterial({ color });
       const cyl = new THREE.Mesh(cylGeom, cylMat);
       cyl.position.y = length / 2; // dịch lên một nửa chiều dài
       axisGroup.add(cyl);
     
       // Mũi tên (hình nón)
-      const coneGeom = new THREE.ConeGeometry(0.03, 0.06, 16);
+      const coneGeom = new THREE.ConeGeometry(0.005, 0.001, 16);
       const coneMat = new THREE.MeshBasicMaterial({ color });
       const cone = new THREE.Mesh(coneGeom, coneMat);
-      cone.position.y = length + 0.06; // trên đỉnh thân trụ
+      cone.position.y = length + 0.005; // trên đỉnh thân trụ
       axisGroup.add(cone);
     
       return axisGroup;
