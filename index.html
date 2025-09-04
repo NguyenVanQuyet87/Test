@@ -606,8 +606,7 @@ function computePlacementMatrixFromMatrix(baseMatrix) {
   const controller = renderer.xr.getController(0);
   controller.addEventListener("select", ()=>{ if (reticle.visible) placeAnchorFromLastHit(); });
   scene.add(controller);
-  
-  renderer.domElement.addEventListener("click", ()=>{ 
+ renderer.domElement.addEventListener("click", ()=>{ 
     const s=renderer.xr.getSession(); 
     if (s && reticle.visible && !isPlacing) {
       placeAnchorFromLastHit(); 
@@ -728,23 +727,23 @@ function computePlacementMatrixFromMatrix(baseMatrix) {
     //axesGroup.add(new THREE.Line(yGeom, yMat));
 
     function createAxis(length, color) {
-      const group = new THREE.Group();
+      const axisGroup = new THREE.Group();
     
       // Thân trụ
-      const cylGeom = new THREE.CylinderGeometry(0.01, 0.01, length, 16);
+      const cylGeom = new THREE.CylinderGeometry(0.005, 0.005, length, 16);
       const cylMat = new THREE.MeshBasicMaterial({ color });
       const cyl = new THREE.Mesh(cylGeom, cylMat);
       cyl.position.y = length / 2; // dịch lên một nửa chiều dài
-      group.add(cyl);
+      axisGroup.add(cyl);
     
       // Mũi tên (hình nón)
-      const coneGeom = new THREE.ConeGeometry(0.15, 0.3, 16);
+      const coneGeom = new THREE.ConeGeometry(0.03, 0.06, 16);
       const coneMat = new THREE.MeshBasicMaterial({ color });
       const cone = new THREE.Mesh(coneGeom, coneMat);
-      cone.position.y = length + 0.15; // trên đỉnh thân trụ
-      group.add(cone);
+      cone.position.y = length + 0.06; // trên đỉnh thân trụ
+      axisGroup.add(cone);
     
-      return group;
+      return axisGroup;
     }
     const axisX = createAxis(1, 0xff0000);
     axisX.rotation.z = -Math.PI/2; // quay thân X sang ngang
@@ -786,7 +785,7 @@ function computePlacementMatrixFromMatrix(baseMatrix) {
        axesGroup.position.copy(cameraPos);
       axesGroup.quaternion.setFromRotationMatrix(matrix);
     }
-    scene.add(axesGroup);
+    PLACEMENTS_ROOT.add(axesGroup);
     infoEl.textContent = "Đã vào chế độ Adjust. Hệ trục được tạo tại vị trí hit.";
   }
   // Tạo vòng tròn focus ở giữa màn hình (chỉ để người dùng thấy)
