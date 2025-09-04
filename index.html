@@ -389,7 +389,7 @@ function adjustMaterial(material) {
   }
   if (material instanceof THREE.MeshStandardMaterial || 
       material instanceof THREE.MeshPhysicalMaterial) {
-    material.roughness = 0.3; // càng nhỏ càng bóng
+    material.roughness = 0.2; // càng nhỏ càng bóng
     material.metalness = 0.5; // càng cao càng giống gương
   }
   material.needsUpdate = true;
@@ -607,7 +607,7 @@ function computePlacementMatrixFromMatrix(baseMatrix) {
   controller.addEventListener("select", ()=>{ if (reticle.visible) placeAnchorFromLastHit(); });
   scene.add(controller);
   
-  window.addEventListener("click", ()=>{ 
+  renderer.domElement.addEventListener("click", ()=>{ 
     const s=renderer.xr.getSession(); 
     if (s && reticle.visible && !isPlacing) {
       placeAnchorFromLastHit(); 
@@ -712,21 +712,52 @@ function computePlacementMatrixFromMatrix(baseMatrix) {
     const axisLen = 3.0;
 
     // Trục X (đỏ)
-    const xGeom = new THREE.BufferGeometry().setFromPoints([
-      new THREE.Vector3(-axisLen, 0, 0),
-      new THREE.Vector3(axisLen, 0, 0)
-    ]);
-    const xMat = new THREE.LineBasicMaterial({ color: 0xff0000 });
-    axesGroup.add(new THREE.Line(xGeom, xMat));
+    //const xGeom = new THREE.BufferGeometry().setFromPoints([
+      //new THREE.Vector3(-axisLen, 0, 0),
+      //new THREE.Vector3(axisLen, 0, 0)
+    //]);
+    //const xMat = new THREE.LineBasicMaterial({ color: 0xff0000 });
+    //axesGroup.add(new THREE.Line(xGeom, xMat));
 
     // Trục Y (xanh lá)
-    const yGeom = new THREE.BufferGeometry().setFromPoints([
-      new THREE.Vector3(0, -axisLen, 0),
-      new THREE.Vector3(0, axisLen, 0)
-    ]);
-    const yMat = new THREE.LineBasicMaterial({ color: 0x00ff00 });
-    axesGroup.add(new THREE.Line(yGeom, yMat));
+    //const yGeom = new THREE.BufferGeometry().setFromPoints([
+      //new THREE.Vector3(0, -axisLen, 0),
+      //new THREE.Vector3(0, axisLen, 0)
+    //]);
+    //const yMat = new THREE.LineBasicMaterial({ color: 0x00ff00 });
+    //axesGroup.add(new THREE.Line(yGeom, yMat));
 
+    function createAxis(length, color) {
+      const group = new THREE.Group();
+    
+      // Thân trụ
+      const cylGeom = new THREE.CylinderGeometry(0.05, 0.05, length, 16);
+      const cylMat = new THREE.MeshBasicMaterial({ color });
+      const cyl = new THREE.Mesh(cylGeom, cylMat);
+      cyl.position.y = length / 2; // dịch lên một nửa chiều dài
+      group.add(cyl);
+    
+      // Mũi tên (hình nón)
+      const coneGeom = new THREE.ConeGeometry(0.15, 0.3, 16);
+      const coneMat = new THREE.MeshBasicMaterial({ color });
+      const cone = new THREE.Mesh(coneGeom, coneMat);
+      cone.position.y = length + 0.15; // trên đỉnh thân trụ
+      group.add(cone);
+    
+      return group;
+    }
+    const axisX = createAxis(3, 0xff0000);
+    axisX.rotation.z = -Math.PI/2; // quay thân X sang ngang
+    axesGroup.add(axisX);
+    
+    const axisY = createAxis(3, 0x00ff00);
+    // mặc định dựng đứng theo Y
+    axesGroup.add(axisY);
+    
+    const axisZ = createAxis(3, 0x0000ff);
+    axisZ.rotation.x = Math.PI/2; // quay ra theo Z
+    axesGroup.add(axisZ);
+    
     // Căn orientation theo object được hit
     if (hit.object) {
       // Lấy hướng của object
@@ -852,6 +883,8 @@ function computePlacementMatrixFromMatrix(baseMatrix) {
             // lấy tọa độ điểm targetPoint
             const pos = pose.transform.position;
             targetPoint = new THREE.Vector3(pos.x, pos.y, pos.z);
+          } else {
+            reticle.visible=false; 
           }
         }
       }
