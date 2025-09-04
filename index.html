@@ -709,7 +709,7 @@ function computePlacementMatrixFromMatrix(baseMatrix) {
     axesGroup = new THREE.Group();
     
     // Chiều dài trục (kéo dài 3m mỗi phía)
-    const axisLen = 3.0;
+    const axisLen = 1.0;
 
     // Trục X (đỏ)
     //const xGeom = new THREE.BufferGeometry().setFromPoints([
@@ -731,7 +731,7 @@ function computePlacementMatrixFromMatrix(baseMatrix) {
       const group = new THREE.Group();
     
       // Thân trụ
-      const cylGeom = new THREE.CylinderGeometry(0.05, 0.05, length, 16);
+      const cylGeom = new THREE.CylinderGeometry(0.01, 0.01, length, 16);
       const cylMat = new THREE.MeshBasicMaterial({ color });
       const cyl = new THREE.Mesh(cylGeom, cylMat);
       cyl.position.y = length / 2; // dịch lên một nửa chiều dài
@@ -746,15 +746,15 @@ function computePlacementMatrixFromMatrix(baseMatrix) {
     
       return group;
     }
-    const axisX = createAxis(3, 0xff0000);
+    const axisX = createAxis(1, 0xff0000);
     axisX.rotation.z = -Math.PI/2; // quay thân X sang ngang
     axesGroup.add(axisX);
     
-    const axisY = createAxis(3, 0x00ff00);
+    const axisY = createAxis(1, 0x00ff00);
     // mặc định dựng đứng theo Y
     axesGroup.add(axisY);
     
-    const axisZ = createAxis(3, 0x0000ff);
+    const axisZ = createAxis(1, 0x0000ff);
     axisZ.rotation.x = Math.PI/2; // quay ra theo Z
     axesGroup.add(axisZ);
     
