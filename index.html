@@ -988,7 +988,7 @@ function rotateAroundLocalAxis(localAxis, angleRad) {
     // Đảm bảo localAxis là một vector đã được chuẩn hóa
     localAxis = localAxis.clone().normalize();
 
-    if (adjustPivotPoint && adjustPivotPoint instanceof THREE.Vector3) {
+    if (adjustPivotPoint) {
         // Lấy matrix hiện tại của group
         const matrix = group.matrix.clone();
         const currentPosition = new THREE.Vector3();
@@ -996,15 +996,15 @@ function rotateAroundLocalAxis(localAxis, angleRad) {
         const currentScale = new THREE.Vector3();
         matrix.decompose(currentPosition, currentQuaternion, currentScale);
 
-        // Chuyển pivot point từ world space sang local space
-        const worldToLocalMatrix = new THREE.Matrix4().copy(matrix).invert();
-        const localPivot = adjustPivotPoint.clone().applyMatrix4(worldToLocalMatrix);
+const dentaX = adjustPivotPoint.x - currentPosition.x
+const dentaY = adjustPivotPoint.y - currentPosition.y
+const dentaZ = adjustPivotPoint.z - currentPosition.z
 
         // Tạo ma trận transformation
         const transformationMatrix = new THREE.Matrix4()
-            .makeTranslation(-localPivot.x, -localPivot.y, -localPivot.z) // Dịch về pivot
+            .makeTranslation(dentaX, dentaY, dentaZ)
             .multiply(new THREE.Matrix4().makeRotationAxis(localAxis, angleRad)) // Quay
-            .multiply(new THREE.Matrix4().makeTranslation(localPivot.x, localPivot.y, localPivot.z)); // Dịch ngược lại
+            .multiply(new THREE.Matrix4().makeTranslation(-dentaX, -dentaY, -dentaZ)); // Dịch ngược lại
 
         // Áp dụng transformation vào matrix hiện tại
         group.matrix.multiplyMatrices(matrix, transformationMatrix);
