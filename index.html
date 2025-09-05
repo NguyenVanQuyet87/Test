@@ -987,7 +987,7 @@ function rotateAroundLocalAxis(localAxis, angleRad) {
     
     if (adjustPivotPoint) {
         // Sử dụng trục Z world (thẳng đứng)
-        const worldZAxis = new THREE.Vector3(0, 0, 1);
+        const worldZAxis = new THREE.Vector3(1, 0, 0);
         
         // Lấy matrix hiện tại
         const currentMatrix = group.matrix.clone();
