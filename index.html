@@ -1008,8 +1008,9 @@ function rotateAroundLocalAxis(localAxis, angleRad) {
         // Vị trí mới sau khi quay
         const newPosition = adjustPivotPoint.clone().add(pivotToPosition);
         
-        // Quaternion mới: áp dụng rotation vào quaternion hiện tại
-        const newQuaternion = rotationQuat.multiply(quaternion);
+        // Giữ nguyên orientation của object, chỉ quay vị trí quanh pivot
+        // Object không tự quay, chỉ di chuyển theo quỤ đạo tròn quanh pivot
+        const newQuaternion = quaternion.clone();
         
         // Tạo matrix mới
         const newMatrix = new THREE.Matrix4().compose(newPosition, newQuaternion, scale);
