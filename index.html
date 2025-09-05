@@ -983,32 +983,46 @@ async function placeAnchorFromLastHit() {
 function rotateAroundLocalAxis(localAxis, angleRad) {
     if (!currentAnchor || !currentAnchor.group) return;
     const group = currentAnchor.group;
-
+  
     if (adjustPivotPoint) {
-        // Lưu vị trí world hiện tại của pivot point
-        const pivotWorldPosition = adjustPivotPoint.clone();
-        
-        // Thực hiện phép quay
-        const rotationQuat = new THREE.Quaternion().setFromAxisAngle(localAxis, angleRad);
-        group.quaternion.multiply(rotationQuat);
-        
-        // Tính toán sự thay đổi vị trí của pivot point sau khi quay
-        group.updateMatrixWorld(true);
-        const newPivotWorldPosition = adjustPivotPoint.clone().applyMatrix4(group.matrixWorld);
-        
-        // Điều chỉnh vị trí để giữ pivot point cố định
-        const offset = pivotWorldPosition.clone().sub(newPivotWorldPosition);
-        group.position.add(offset);
-        
-        group.matrixWorldNeedsUpdate = true;
+      // Lấy matrix hiện tại của group
+      const matrix = group.matrix.clone();
+      const quaternion = new THREE.Quaternion();
+      const position = new THREE.Vector3();
+      const scale = new THREE.Vector3();
+      matrix.decompose(position, quaternion, scale);
+  
+      // Tính vector dịch chuyển từ group position đến pivot point (world space)
+      const newPosition = adjustPivotPoint.clone();
+  
+      // Thực hiện xoay quanh gốc (giống case mặc định)
+      const rotationQuat = new THREE.Quaternion().setFromAxisAngle(localAxis, angleRad);
+      quaternion.multiply(rotationQuat);
+  
+      // Dịch ngược lại để giữ pivot point cố định
+      
+  
+      // Tạo matrix mới
+      const newMatrix = new THREE.Matrix4().compose(newPosition, quaternion, scale);
+  
+      // Cập nhật matrix của group
+      group.matrix.copy(newMatrix);
+      group.matrixWorldNeedsUpdate = true;
     } else {
-        // Mặc định: Xoay quanh gốc group
-        const rotationQuat = new THREE.Quaternion().setFromAxisAngle(localAxis, angleRad);
-        group.quaternion.multiply(rotationQuat);
-        group.matrixWorldNeedsUpdate = true;
+      // Mặc định: Xoay quanh gốc group
+      const matrix = group.matrix.clone();
+      const quaternion = new THREE.Quaternion();
+      const position = new THREE.Vector3();
+      const scale = new THREE.Vector3();
+      matrix.decompose(position, quaternion, scale);
+      const rotationQuat = new THREE.Quaternion().setFromAxisAngle(localAxis, angleRad);
+      quaternion.multiply(rotationQuat);
+      matrix.compose(position, quaternion, scale);
+      group.matrix.copy(matrix);
+      group.matrixWorldNeedsUpdate = true;
     }
-}
-     renderer.domElement.addEventListener("touchstart",(e)=>{ 
+  }
+ renderer.domElement.addEventListener("touchstart",(e)=>{ 
     if (e.touches.length===1) { 
       isDragging=true; 
       previousTouchX=e.touches[0].clientX; 
