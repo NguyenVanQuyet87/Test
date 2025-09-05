@@ -249,7 +249,7 @@
   const rotationSlider = document.getElementById("rotationSlider");
 
   let modelTemplate = null;
-  let currentAnchor = null;
+  let  = null;
   let reticle;
   let hitTestSource = null;
   let lastHitResult = null;
@@ -421,7 +421,7 @@ function adjustMaterial(material) {
       const child = PLACEMENTS_ROOT.children[0];
       PLACEMENTS_ROOT.remove(child);
     }
-    currentAnchor = null;
+     = null;
     currentModel = null;
   }
 
@@ -849,6 +849,18 @@ function computePlacementMatrixFromMatrix(baseMatrix) {
     if (frame) {
       const refSpace = renderer.xr.getReferenceSpace();
       let targetPoint = null;
+      if (currentAnchor && currentAnchor.anchor) {
+        const anchorSpace = currentAnchor.anchor.anchorSpace; // XRSpace của anchor
+        const anchorPose = frame.getPose(anchorSpace, refSpace);
+        if (anchorPose) {
+          // Ma trận của anchor tại frame hiện tại
+          const anchorMatrix = new THREE.Matrix4().fromArray(anchorPose.transform.matrix);
+          // Cập nhật group trong scene
+          currentAnchor.group.matrix.copy(anchorMatrix);
+          currentAnchor.group.matrixWorldNeedsUpdate = true;
+        }
+      }
+      
       if (hitTestSource && refSpace) {
         const hits = frame.getHitTestResults(hitTestSource);
         if (hits.length>0 && !adjustMode) {
@@ -966,6 +978,10 @@ function computePlacementMatrixFromMatrix(baseMatrix) {
     position.add(worldAxis.multiplyScalar(distance));
     matrix.compose(position, quaternion, scale);
     group.matrix.copy(matrix);
+    // Cập nhật anchor với vị trí mới
+    if (currentAnchor.anchor && currentAnchor.anchor.setMatrix) {
+      currentAnchor.anchor.setMatrix(matrix.elements);
+    }
   }
     
   // Hàm quay mô hình quanh trục local
@@ -981,6 +997,10 @@ function computePlacementMatrixFromMatrix(baseMatrix) {
     quaternion.multiply(rotationQuat); // Local rotation
     matrix.compose(position, quaternion, scale);
     group.matrix.copy(matrix);
+    // Cập nhật anchor với vị trí mới
+    if (currentAnchor.anchor && currentAnchor.anchor.setMatrix) {
+      currentAnchor.anchor.setMatrix(matrix.elements);
+    }
   }
     
   renderer.domElement.addEventListener("touchstart",(e)=>{ 
