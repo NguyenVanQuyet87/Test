@@ -587,7 +587,6 @@ function computePlacementMatrixFromMatrix(baseMatrix) {
     isPlacing = false;
     return;
   }
-
     const group = new THREE.Group();
     group.matrixAutoUpdate=false;
     if (pose) {
@@ -599,12 +598,19 @@ function computePlacementMatrixFromMatrix(baseMatrix) {
     group.add(placed);
     currentModel = placed;
     currentAnchor = { anchor, group };
-    if (anchor) allAnchors.add(anchor);
+    if (anchor) {
+      allAnchors.add(anchor);
+    };
     infoEl.textContent = "Mô hình đã được đặt và neo thành công!";
   }
-
+  // Sự kiện này xảy ra khi có thiết bị cầm tay
   const controller = renderer.xr.getController(0);
-  controller.addEventListener("select", ()=>{ if (reticle.visible) placeAnchorFromLastHit(); });
+  controller.addEventListener("select", ()=>{ 
+    if (reticle.visible && !isPlacing) {
+      placeAnchorFromLastHit(); 
+      isPlacing = true;
+    }
+  });
   scene.add(controller);
  renderer.domElement.addEventListener("click", ()=>{ 
     const s=renderer.xr.getSession(); 
@@ -702,7 +708,7 @@ function computePlacementMatrixFromMatrix(baseMatrix) {
       axesGroup = null;
     }
   // Nếu hit không tồn tại thì lấy theo gốc anchor
-   if (!hit && currentAnchor && currentAnchor.group) {
+   if (!hit) {
       const matrix = group.matrix.clone();
       const quaternion = new THREE.Quaternion();
       const position = new THREE.Vector3();
@@ -723,7 +729,6 @@ function computePlacementMatrixFromMatrix(baseMatrix) {
     const axisLen = 1;
     function createAxis(length, color) {
       const axisGroup = new THREE.Group();
-    
       // Thân trụ
       const cylGeom = new THREE.CylinderGeometry(0.001, 0.001, length, 16);
       const cylMat = new THREE.MeshBasicMaterial({ color });
@@ -1001,7 +1006,10 @@ function computePlacementMatrixFromMatrix(baseMatrix) {
     } 
   });
     
-  renderer.domElement.addEventListener("touchend",()=>{ isDragging=false; });
+  renderer.domElement.addEventListener("touchend",()=>
+    { 
+      isDragging=false; 
+    });
   window.addEventListener("resize",()=>{ 
     camera.aspect = window.innerWidth/window.innerHeight; 
     camera.updateProjectionMatrix(); 
