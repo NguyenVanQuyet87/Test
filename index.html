@@ -701,7 +701,7 @@ function computePlacementMatrixFromMatrix(baseMatrix) {
       group.remove(axesGroup);
       axesGroup = null;
     }
-
+  // Nếu hit không tồn tại thì lấy theo gốc anchor
    if (!hit && currentAnchor && currentAnchor.group) {
       const matrix = group.matrix.clone();
       const quaternion = new THREE.Quaternion();
@@ -715,7 +715,7 @@ function computePlacementMatrixFromMatrix(baseMatrix) {
     }
 
     if (!hit) return;
-
+    // Nếu hit tồn tại thì lấy theo hit
     // Tạo group mới cho trục
     axesGroup = new THREE.Group();
     
@@ -741,18 +741,22 @@ function computePlacementMatrixFromMatrix(baseMatrix) {
       return axisGroup;
     }
     const axisX = createAxis(axisLen, 0xff0000);
-    axisX.rotation.y = Math.PI/2; // quay thân X sang ngang
+    axisX.rotation.y = -Math.PI/2; // quay thân X sang ngang
     axesGroup.add(axisX);
     
     const axisY = createAxis(axisLen, 0x00ff00);
     // mặc định dựng đứng theo Y
-    axisY.rotation.z = Math.PI;
+    axisY.rotation.y = Math.PI;
     axesGroup.add(axisY);
     
     const axisZ = createAxis(axisLen, 0x0000ff);
     axisZ.rotation.z = Math.PI/2; // quay ra theo Z
     axesGroup.add(axisZ);
     
+     // Quan trọng: đặt vị trí hệ trục tại hit.point
+    if (hit.point) {
+      axesGroup.position.copy(hit.point);
+    }
     // Căn orientation theo object được hit
     if (hit.object) {
       // Lấy hướng của object
@@ -772,7 +776,7 @@ function computePlacementMatrixFromMatrix(baseMatrix) {
       camera.getWorldPosition(cameraPos);
      
       // Tạo ma trận định hướng cho trục
-      const zAxis = new THREE.Vector3(0, 0, 1); // Trục Z thẳng đứng
+      const zAxis = new THREE.Vector3(0, 1, 0); // Trục Z thẳng đứng
       const xAxis = new THREE.Vector3().crossVectors(zAxis, cameraDirection).normalize(); // Trục X vuông góc với hướng camera và trục Z
       const yAxis = new THREE.Vector3().crossVectors(zAxis, xAxis).normalize(); // Trục Y vuông góc với trục X và Z
       
