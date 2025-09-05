@@ -850,14 +850,15 @@ function computePlacementMatrixFromMatrix(baseMatrix) {
       const refSpace = renderer.xr.getReferenceSpace();
       let targetPoint = null;
       if (currentAnchor && currentAnchor.anchor) {
-      const anchorSpace = currentAnchor.anchor.anchorSpace; // XRSpace của anchor
-      const anchorPose = frame.getPose(anchorSpace, refSpace);
-      if (anchorPose) {
-        // Ma trận của anchor tại frame hiện tại
-        const anchorMatrix = new THREE.Matrix4().fromArray(anchorPose.transform.matrix);
-        // Cập nhật group trong scene
-        currentAnchor.group.matrix.copy(anchorMatrix);
-        currentAnchor.group.matrixWorldNeedsUpdate = true;
+        const anchorSpace = currentAnchor.anchor.anchorSpace; // XRSpace của anchor
+        const anchorPose = frame.getPose(anchorSpace, refSpace);
+        if (anchorPose) {
+          // Ma trận của anchor tại frame hiện tại
+          const anchorMatrix = new THREE.Matrix4().fromArray(anchorPose.transform.matrix);
+          // Cập nhật group trong scene
+          currentAnchor.group.matrix.copy(anchorMatrix);
+          currentAnchor.group.matrixWorldNeedsUpdate = true;
+        }
       }
       if (hitTestSource && refSpace) {
         const hits = frame.getHitTestResults(hitTestSource);
