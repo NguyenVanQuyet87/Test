@@ -571,35 +571,43 @@ function computePlacementMatrixFromMatrix(baseMatrix) {
 
   return basis;
 }
-
   async function placeAnchorFromLastHit() {
     if (isPlacing) return;
     const hit = lastHitResult;
     const refSpace = renderer.xr.getReferenceSpace();
     if (!hit || !refSpace || !modelTemplate) { isPlacing=false; return; }
+  
     clearAllPlacementsAndAnchors();
-    const pose = hit.getPose(refSpace);
-    const anchor = await hit.createAnchor?.(refSpace).catch(()=>null);
-
- // Nếu không tạo được anchor thì bỏ qua
-  if (!pose || !anchor) {
-   infoEl.textContent = "Không thể tạo anchor, mô hình sẽ không được đặt.";
-    isPlacing = false;
-    return;
-  }
+  
+    const hitPose = hit.getPose(refSpace);
+    const anchor = await hit.createAnchor?.(refSpace).catch(() => null);
+  
+    if (!hitPose || !anchor) {
+      infoEl.textContent = "Không thể tạo anchor, mô hình sẽ không được đặt.";
+      isPlacing = false;
+      return;
+    }
+  
+    const hitMatrix = new THREE.Matrix4().fromArray(hitPose.transform.matrix);
+    const placementMatrix = computePlacementMatrixFromMatrix(hitMatrix);
+    const offset = hitMatrix.clone().invert().multiply(placementMatrix);
+  
     const group = new THREE.Group();
-    group.matrixAutoUpdate=false;
-    
+    group.matrixAutoUpdate = false;
+    group.matrix.copy(placementMatrix);
+  
     PLACEMENTS_ROOT.add(group);
     const placed = cloneModel(modelTemplate);
     group.add(placed);
     currentModel = placed;
-    currentAnchor = { anchor, group };
-    if (anchor) {
-      allAnchors.add(anchor);
-    };
+  
+    currentAnchor = { anchor, group, offset };
+    allAnchors.add(anchor);
+  
+    isPlacing = false;
     infoEl.textContent = "Mô hình đã được đặt và neo thành công!";
   }
+
   // Sự kiện này xảy ra khi có thiết bị cầm tay
   const controller = renderer.xr.getController(0);
   controller.addEventListener("select", ()=>{ 
@@ -848,38 +856,17 @@ function computePlacementMatrixFromMatrix(baseMatrix) {
       let targetPoint = null;
       if (currentAnchor && currentAnchor.anchor) {
         try {
-          // Kiểm tra xem anchor có anchorSpace không
-          if (currentAnchor.anchor.anchorSpace) {
-            const anchorPose = frame.getPose(currentAnchor.anchor.anchorSpace, refSpace);
-            
-            if (anchorPose) {
-              // Ma trận của anchor tại frame hiện tại
-              const anchorMatrix = new THREE.Matrix4().fromArray(anchorPose.transform.matrix);
-              
-              // Lấy định hướng hiện tại từ group
-              const currentPosition = new THREE.Vector3();
-              const currentQuaternion = new THREE.Quaternion();
-              const currentScale = new THREE.Vector3();
-              
-              currentAnchor.group.matrix.decompose(currentPosition, currentQuaternion, currentScale);
-              
-              // Lấy chỉ VỊ TRÍ từ anchor
-              const anchorPosition = new THREE.Vector3();
-              const anchorQuaternion = new THREE.Quaternion();
-              const anchorScale = new THREE.Vector3();
-              anchorMatrix.decompose(anchorPosition, anchorQuaternion, anchorScale);
-              
-              // Tạo ma trận mới với vị trí từ anchor nhưng định hướng hiện tại
-              const newMatrix = new THREE.Matrix4().compose(anchorPosition, currentQuaternion, currentScale);
-              
-              // Cập nhật group
-              currentAnchor.group.matrix.copy(newMatrix);
-              currentAnchor.group.matrixWorldNeedsUpdate = true;
-            }
+          const anchorSpace = currentAnchor.anchor.anchorSpace || currentAnchor.anchor.space;
+          const anchorPose = frame.getPose(anchorSpace, refSpace);
+          if (anchorPose) {
+            const anchorMatrix = new THREE.Matrix4().fromArray(anchorPose.transform.matrix);
+            const offset = currentAnchor.offset || new THREE.Matrix4().identity();
+            const finalMat = anchorMatrix.clone().multiply(offset);
+            currentAnchor.group.matrix.copy(finalMat);
+            currentAnchor.group.matrixWorldNeedsUpdate = true;
           }
-        } catch (e) {
-          console.warn("Lỗi khi cập nhật anchor:", e);
-          // Tiếp tục mà không làm gián đoạn ứng dụng
+        } catch (err) {
+          console.warn("Lỗi khi cập nhật anchor:", err);
         }
       }
       if (hitTestSource && refSpace) {
