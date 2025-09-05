@@ -612,6 +612,17 @@ function computePlacementMatrixFromMatrix(baseMatrix) {
       placeAnchorFromLastHit(); 
       isPlacing = true;
     }
+    if (isPlacing) {
+      // Raycast từ tâm màn hình
+      const hit = getIntersects();
+      if (hit) {
+        const obj = hit.object;
+        if (obj.material) {
+          obj.material.color.set(0xff7e21);
+        }
+        infoEl.textContent = `Chọn: ${obj.name}`;
+      }
+    }
   });
 
   placementBtn.addEventListener("click", (e)=>{
@@ -684,7 +695,7 @@ function computePlacementMatrixFromMatrix(baseMatrix) {
 
   // Hàm tạo hệ trục tại vị trí hit
   function createAxesAtHit(hit) {
-const group = currentAnchor.group;
+    const group = currentAnchor.group;
     // Xóa trục cũ nếu có
     if (axesGroup) {
       group.remove(axesGroup);
@@ -692,7 +703,6 @@ const group = currentAnchor.group;
     }
 
    if (!hit && currentAnchor && currentAnchor.group) {
-      
       const matrix = group.matrix.clone();
       const quaternion = new THREE.Quaternion();
       const position = new THREE.Vector3();
@@ -710,24 +720,7 @@ const group = currentAnchor.group;
     axesGroup = new THREE.Group();
     
     // Chiều dài trục (kéo dài 3m mỗi phía)
-    const axisLen = 0.5;
-
-    // Trục X (đỏ)
-    //const xGeom = new THREE.BufferGeometry().setFromPoints([
-      //new THREE.Vector3(-axisLen, 0, 0),
-      //new THREE.Vector3(axisLen, 0, 0)
-    //]);
-    //const xMat = new THREE.LineBasicMaterial({ color: 0xff0000 });
-    //axesGroup.add(new THREE.Line(xGeom, xMat));
-
-    // Trục Y (xanh lá)
-    //const yGeom = new THREE.BufferGeometry().setFromPoints([
-      //new THREE.Vector3(0, -axisLen, 0),
-      //new THREE.Vector3(0, axisLen, 0)
-    //]);
-    //const yMat = new THREE.LineBasicMaterial({ color: 0x00ff00 });
-    //axesGroup.add(new THREE.Line(yGeom, yMat));
-
+    const axisLen = 1;
     function createAxis(length, color) {
       const axisGroup = new THREE.Group();
     
@@ -747,16 +740,16 @@ const group = currentAnchor.group;
     
       return axisGroup;
     }
-    const axisX = createAxis(1, 0xff0000);
-    axisX.rotation.z = -Math.PI/2; // quay thân X sang ngang
+    const axisX = createAxis(axisLen, 0xff0000);
+    //axisX.rotation.z = -Math.PI/2; // quay thân X sang ngang
     axesGroup.add(axisX);
     
-    const axisY = createAxis(1, 0x00ff00);
+    const axisY = createAxis(axisLen, 0x00ff00);
     // mặc định dựng đứng theo Y
     axesGroup.add(axisY);
     
-    const axisZ = createAxis(1, 0x0000ff);
-    axisZ.rotation.x = Math.PI/2; // quay ra theo Z
+    const axisZ = createAxis(axisLen, 0x0000ff);
+    //axisZ.rotation.x = Math.PI/2; // quay ra theo Z
     axesGroup.add(axisZ);
     
     // Căn orientation theo object được hit
@@ -778,7 +771,7 @@ const group = currentAnchor.group;
       camera.getWorldPosition(cameraPos);
      
       // Tạo ma trận định hướng cho trục
-      const zAxis = new THREE.Vector3(0, 1, 0); // Trục Z thẳng đứng
+      const zAxis = new THREE.Vector3(0, 0, 1); // Trục Z thẳng đứng
       const xAxis = new THREE.Vector3().crossVectors(zAxis, cameraDirection).normalize(); // Trục X vuông góc với hướng camera và trục Z
       const yAxis = new THREE.Vector3().crossVectors(zAxis, xAxis).normalize(); // Trục Y vuông góc với trục X và Z
       
@@ -821,10 +814,10 @@ const group = currentAnchor.group;
   function getIntersects() {
     const offsets = [
       new THREE.Vector2(0, 0),              // tia trung tâm
-      new THREE.Vector2(0.01, 0),           // lệch phải
-      new THREE.Vector2(-0.01, 0),          // lệch trái
-      new THREE.Vector2(0, 0.01),           // lệch lên
-      new THREE.Vector2(0, -0.01)           // lệch xuống
+      //new THREE.Vector2(0.01, 0),           // lệch phải
+      //new THREE.Vector2(-0.01, 0),          // lệch trái
+      //new THREE.Vector2(0, 0.01),           // lệch lên
+      //new THREE.Vector2(0, -0.01)           // lệch xuống
     ];
     let allHits = [];
     offsets.forEach(off => {
@@ -986,7 +979,6 @@ const group = currentAnchor.group;
     position.add(worldAxis.multiplyScalar(distance));
     matrix.compose(position, quaternion, scale);
     group.matrix.copy(matrix);
-
   }
     
   // Hàm quay mô hình quanh trục local
