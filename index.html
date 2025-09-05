@@ -683,14 +683,15 @@ function computePlacementMatrixFromMatrix(baseMatrix) {
 
   // Hàm tạo hệ trục tại vị trí hit
   function createAxesAtHit(hit) {
+const group = currentAnchor.group;
     // Xóa trục cũ nếu có
     if (axesGroup) {
-      PLACEMENTS_ROOT.remove(axesGroup);
+      group.remove(axesGroup);
       axesGroup = null;
     }
 
    if (!hit && currentAnchor && currentAnchor.group) {
-      const group = currentAnchor.group;
+      
       const matrix = group.matrix.clone();
       const quaternion = new THREE.Quaternion();
       const position = new THREE.Vector3();
@@ -737,7 +738,7 @@ function computePlacementMatrixFromMatrix(baseMatrix) {
       axisGroup.add(cyl);
     
       // Mũi tên (hình nón)
-      const coneGeom = new THREE.ConeGeometry(0.002, 0.01, 16);
+      const coneGeom = new THREE.ConeGeometry(0.005, 0.02, 16);
       const coneMat = new THREE.MeshBasicMaterial({ color });
       const cone = new THREE.Mesh(coneGeom, coneMat);
       cone.position.y = 0.2; // trên đỉnh thân trụ
@@ -785,7 +786,7 @@ function computePlacementMatrixFromMatrix(baseMatrix) {
        axesGroup.position.copy(cameraPos);
       axesGroup.quaternion.setFromRotationMatrix(matrix);
     }
-    PLACEMENTS_ROOT.add(axesGroup);
+    group.add(axesGroup);
     infoEl.textContent = "Đã vào chế độ Adjust. Hệ trục được tạo tại vị trí hit.";
   }
   // Tạo vòng tròn focus ở giữa màn hình (chỉ để người dùng thấy)
@@ -987,10 +988,6 @@ function computePlacementMatrixFromMatrix(baseMatrix) {
     position.add(worldAxis.multiplyScalar(distance));
     matrix.compose(position, quaternion, scale);
     group.matrix.copy(matrix);
-if (axesGroup) {
-  axesGroup.matrix.copy(matrix);
-  axesGroup.matrixAutoUpdate = false;
-}
 
   }
     
