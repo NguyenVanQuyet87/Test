@@ -421,7 +421,7 @@ function adjustMaterial(material) {
       const child = PLACEMENTS_ROOT.children[0];
       PLACEMENTS_ROOT.remove(child);
     }
-     = null;
+    currentAnchor = null;
     currentModel = null;
   }
 
@@ -850,17 +850,15 @@ function computePlacementMatrixFromMatrix(baseMatrix) {
       const refSpace = renderer.xr.getReferenceSpace();
       let targetPoint = null;
       if (currentAnchor && currentAnchor.anchor) {
-        const anchorSpace = currentAnchor.anchor.anchorSpace; // XRSpace của anchor
-        const anchorPose = frame.getPose(anchorSpace, refSpace);
-        if (anchorPose) {
-          // Ma trận của anchor tại frame hiện tại
-          const anchorMatrix = new THREE.Matrix4().fromArray(anchorPose.transform.matrix);
-          // Cập nhật group trong scene
-          currentAnchor.group.matrix.copy(anchorMatrix);
-          currentAnchor.group.matrixWorldNeedsUpdate = true;
-        }
+      const anchorSpace = currentAnchor.anchor.anchorSpace; // XRSpace của anchor
+      const anchorPose = frame.getPose(anchorSpace, refSpace);
+      if (anchorPose) {
+        // Ma trận của anchor tại frame hiện tại
+        const anchorMatrix = new THREE.Matrix4().fromArray(anchorPose.transform.matrix);
+        // Cập nhật group trong scene
+        currentAnchor.group.matrix.copy(anchorMatrix);
+        currentAnchor.group.matrixWorldNeedsUpdate = true;
       }
-      
       if (hitTestSource && refSpace) {
         const hits = frame.getHitTestResults(hitTestSource);
         if (hits.length>0 && !adjustMode) {
@@ -978,7 +976,7 @@ function computePlacementMatrixFromMatrix(baseMatrix) {
     position.add(worldAxis.multiplyScalar(distance));
     matrix.compose(position, quaternion, scale);
     group.matrix.copy(matrix);
-    // Cập nhật anchor với vị trí mới
+        // Cập nhật anchor với vị trí mới
     if (currentAnchor.anchor && currentAnchor.anchor.setMatrix) {
       currentAnchor.anchor.setMatrix(matrix.elements);
     }
@@ -997,7 +995,7 @@ function computePlacementMatrixFromMatrix(baseMatrix) {
     quaternion.multiply(rotationQuat); // Local rotation
     matrix.compose(position, quaternion, scale);
     group.matrix.copy(matrix);
-    // Cập nhật anchor với vị trí mới
+        // Cập nhật anchor với vị trí mới
     if (currentAnchor.anchor && currentAnchor.anchor.setMatrix) {
       currentAnchor.anchor.setMatrix(matrix.elements);
     }
