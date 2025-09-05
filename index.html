@@ -1007,10 +1007,8 @@ function rotateAroundLocalAxis(localAxis, angleRad) {
             .multiply(new THREE.Matrix4().makeTranslation(localPivot.x, localPivot.y, localPivot.z)); // Dịch ngược lại
 
         // Áp dụng transformation vào matrix hiện tại
-        group.matrix.multiplyMatrices(transformationMatrix, matrix);
+        group.matrix.multiplyMatrices(matrix, transformationMatrix);
 
-        // Cập nhật position, quaternion, scale từ matrix
-        group.matrix.decompose(group.position, group.quaternion, group.scale);
         group.matrixWorldNeedsUpdate = true;
     } else {
         // Xoay quanh gốc group
