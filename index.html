@@ -983,15 +983,16 @@ async function placeAnchorFromLastHit() {
   function rotateAroundLocalAxis(localAxis, angleRad) {
     if (!currentAnchor || !currentAnchor.group) return;
     const group = currentAnchor.group;
-    const matrix = group.matrix.clone();
-    const quaternion = new THREE.Quaternion();
-    const position = new THREE.Vector3();
-    const scale = new THREE.Vector3();
-    matrix.decompose(position, quaternion, scale);
-    const rotationQuat = new THREE.Quaternion().setFromAxisAngle(localAxis, angleRad);
-    quaternion.multiply(rotationQuat); // Local rotation
-    matrix.compose(position, quaternion, scale);
-    group.matrix.copy(matrix);
+    const pivot = currentAnchor.pivotMatrix || new THREE.Matrix4();
+  
+    const rot = new THREE.Matrix4().makeRotationAxis(localAxis.clone().normalize(), angleRad);
+  
+    const newMatrix = new THREE.Matrix4()
+      .multiplyMatrices(pivot, rot)               // quay quanh pivot
+      .multiply(pivot.clone().invert())
+      .multiply(group.matrix);
+  
+    group.matrix.copy(newMatrix);
   }
     
   renderer.domElement.addEventListener("touchstart",(e)=>{ 
