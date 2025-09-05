@@ -590,13 +590,6 @@ function computePlacementMatrixFromMatrix(baseMatrix) {
     const group = new THREE.Group();
     group.matrixAutoUpdate=false;
     
-    const placementMatrix = computePlacementMatrixFromMatrix(new THREE.Matrix4().fromArray(pose.transform.matrix));
-    const offset = new THREE.Matrix4()
-      .copy(placementMatrix)
-      .premultiply(new THREE.Matrix4().copy(anchorMatrix).invert());
-    currentAnchor = { anchor, group, offset };
-    group.matrix.copy(placementMatrix);
-
     PLACEMENTS_ROOT.add(group);
     const placed = cloneModel(modelTemplate);
     group.add(placed);
