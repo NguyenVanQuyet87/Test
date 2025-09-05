@@ -1008,7 +1008,7 @@ function rotateAroundLocalAxis(localAxis, angleRad) {
           -adjustPivotPoint.z
       );
       // R: Quay quanh trục Z tại gốc tọa độ
-      const R = new THREE.Matrix4().makeRotationAxis(worldZAxis, angleRad);
+      const R = new THREE.Matrix4().makeRotationAxis(worldAxis, angleRad);
       // T2: Dịch trở lại vị trí pivot
       const T2 = new THREE.Matrix4().makeTranslation(
           adjustPivotPoint.x, 
@@ -1024,8 +1024,8 @@ function rotateAroundLocalAxis(localAxis, angleRad) {
       group.matrix.copy(newMatrix);
     } else {
         // Quay quanh gốc của group - sử dụng trục Y world
-        //const worldYAxis = new THREE.Vector3(0, 0, 1);
-        //const rotationMatrix = new THREE.Matrix4().makeRotationAxis(worldYAxis, angleRad);
+        //const worldAxis = new THREE.Vector3(0, 0, 1);
+        //const rotationMatrix = new THREE.Matrix4().makeRotationAxis(worldAxis, angleRad);
         
         // R * currentMatrix
        // group.matrix.multiplyMatrices(rotationMatrix, group.matrix);
