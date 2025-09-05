@@ -985,38 +985,22 @@ function rotateAroundLocalAxis(localAxis, angleRad) {
     const group = currentAnchor.group;
 
     if (adjustPivotPoint) {
-        // Lấy matrix hiện tại của group
-        const matrix = group.matrix.clone();
-        const currentQuaternion = new THREE.Quaternion();
-        const currentPosition = new THREE.Vector3();
-        const currentScale = new THREE.Vector3();
-        matrix.decompose(currentPosition, currentQuaternion, currentScale);
-
-        // Chuyển pivot point từ world space sang local space của group
-        const worldToLocalMatrix = new THREE.Matrix4().getInverse(matrix);
-        const localPivot = adjustPivotPoint.clone().applyMatrix4(worldToLocalMatrix);
-
-        // Tạo ma trận transformation: dịch về pivot -> quay -> dịch ngược lại
-        const transformationMatrix = new THREE.Matrix4();
+        // Lưu vị trí world hiện tại của pivot point
+        const pivotWorldPosition = adjustPivotPoint.clone();
         
-        // 1. Dịch về pivot point (để pivot trở thành gốc tọa độ)
-        transformationMatrix.makeTranslation(-localPivot.x, -localPivot.y, -localPivot.z);
+        // Thực hiện phép quay
+        const rotationQuat = new THREE.Quaternion().setFromAxisAngle(localAxis, angleRad);
+        group.quaternion.multiply(rotationQuat);
         
-        // 2. Áp dụng phép quay
-        const rotationMatrix = new THREE.Matrix4().makeRotationAxis(localAxis, angleRad);
-        transformationMatrix.multiply(rotationMatrix);
+        // Tính toán sự thay đổi vị trí của pivot point sau khi quay
+        group.updateMatrixWorld(true);
+        const newPivotWorldPosition = adjustPivotPoint.clone().applyMatrix4(group.matrixWorld);
         
-        // 3. Dịch ngược lại về vị trí ban đầu
-        transformationMatrix.multiply(new THREE.Matrix4().makeTranslation(localPivot.x, localPivot.y, localPivot.z));
+        // Điều chỉnh vị trí để giữ pivot point cố định
+        const offset = pivotWorldPosition.clone().sub(newPivotWorldPosition);
+        group.position.add(offset);
         
-        // Áp dụng transformation matrix vào matrix hiện tại
-        matrix.multiply(transformationMatrix);
-        
-        // Cập nhật matrix của group
-        group.matrix.copy(matrix);
-        group.matrix.decompose(group.position, group.quaternion, group.scale);
         group.matrixWorldNeedsUpdate = true;
-
     } else {
         // Mặc định: Xoay quanh gốc group
         const rotationQuat = new THREE.Quaternion().setFromAxisAngle(localAxis, angleRad);
@@ -1024,16 +1008,14 @@ function rotateAroundLocalAxis(localAxis, angleRad) {
         group.matrixWorldNeedsUpdate = true;
     }
 }
-    
-  renderer.domElement.addEventListener("touchstart",(e)=>{ 
+     renderer.domElement.addEventListener("touchstart",(e)=>{ 
     if (e.touches.length===1) { 
       isDragging=true; 
       previousTouchX=e.touches[0].clientX; 
       previousTouchY=e.touches[0].clientY; 
     } 
   });
-    
-  renderer.domElement.addEventListener("touchmove",(e)=>{ 
+     renderer.domElement.addEventListener("touchmove",(e)=>{ 
     if (isDragging && currentModel && e.touches.length===1) { 
       const dx=e.touches[0].clientX-previousTouchX; 
       const dy=e.touches[0].clientY-previousTouchY; 
