@@ -982,7 +982,7 @@ async function placeAnchorFromLastHit() {
   // Hàm quay mô hình quanh trục local
 // Hàm quay mô hình quanh trục local (quay quanh trục Z thẳng đứng tại pivot point)
 function rotateAroundLocalAxis(localAxis, angleRad) {
-    if (!currentAnchor || !currentAnchor.group) return;
+if (!currentAnchor || !currentAnchor.group) return;
     const group = currentAnchor.group;
     
     if (adjustPivotPoint) {
@@ -992,12 +992,9 @@ function rotateAroundLocalAxis(localAxis, angleRad) {
         const quaternion = new THREE.Quaternion();
         const scale = new THREE.Vector3();
         currentMatrix.decompose(position, quaternion, scale);
-        
-        // Sử dụng trục Z world (thẳng đứng) thay vì local axis
-        const worldZAxis = new THREE.Vector3(0, 0, 1); // Trục Z thẳng đứng
-        
+      
         // Tạo quaternion quay quanh trục Z world
-        const rotationQuat = new THREE.Quaternion().setFromAxisAngle(worldZAxis, angleRad);
+        const rotationQuat = new THREE.Quaternion().setFromAxisAngle(localAxis, angleRad);
         
         // Vector từ pivot point đến vị trí group hiện tại (trong world space)
         const pivotToPosition = position.clone().sub(adjustPivotPoint);
@@ -1008,9 +1005,8 @@ function rotateAroundLocalAxis(localAxis, angleRad) {
         // Vị trí mới sau khi quay
         const newPosition = adjustPivotPoint.clone().add(pivotToPosition);
         
-        // Giữ nguyên orientation của object, chỉ quay vị trí quanh pivot
-        // Object không tự quay, chỉ di chuyển theo quỤ đạo tròn quanh pivot
-        const newQuaternion = quaternion.clone();
+        // Quaternion mới: áp dụng rotation vào quaternion hiện tại
+        const newQuaternion = rotationQuat.multiply(quaternion);
         
         // Tạo matrix mới
         const newMatrix = new THREE.Matrix4().compose(newPosition, newQuaternion, scale);
