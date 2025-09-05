@@ -857,36 +857,7 @@ async function placeAnchorFromLastHit() {
     if (frame) {
       const refSpace = renderer.xr.getReferenceSpace();
       let targetPoint = null;
-      if (currentAnchor && currentAnchor.anchor) {
-        try {
-          // Kiểm tra xem anchor có anchorSpace không
-          if (currentAnchor.anchor.anchorSpace) {
-            const anchorPose = frame.getPose(currentAnchor.anchor.anchorSpace, refSpace);
-            
-            if (anchorPose) {
-              // Ma trận của anchor tại frame hiện tại
-              const anchorMatrix = new THREE.Matrix4().fromArray(anchorPose.transform.matrix);
-              
-              // Lấy VỊ TRÍ từ anchor
-              const anchorPosition = new THREE.Vector3();
-              anchorMatrix.decompose(anchorPosition, new THREE.Quaternion(), new THREE.Vector3());
-              
-              // Lấy ROTATION và SCALE từ matrix hiện tại của group (giữ nguyên định hướng đã thiết lập)
-              const currentQuaternion = new THREE.Quaternion();
-              const currentScale = new THREE.Vector3();
-              currentAnchor.group.matrix.decompose(new THREE.Vector3(), currentQuaternion, currentScale);
-              
-              // Tạo ma trận mới với vị trí từ anchor nhưng rotation và scale từ hệ trục đã thiết lập
-              const newMatrix = new THREE.Matrix4().compose(anchorPosition, currentQuaternion, currentScale);
-              
-              // Cập nhật group
-              currentAnchor.group.matrix.copy(newMatrix);
-              currentAnchor.group.matrixWorldNeedsUpdate = true;
-            }
-          }
-        } catch (e) {
-          console.warn("Lỗi khi cập nhật anchor:", e);
-        }
+
       if (hitTestSource && refSpace) {
         const hits = frame.getHitTestResults(hitTestSource);
         if (hits.length>0 && !adjustMode) {
