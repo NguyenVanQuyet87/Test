@@ -996,9 +996,9 @@ function rotateAroundLocalAxis(localAxis, angleRad) {
       // Lấy matrix hiện tại
       const currentMatrix = group.matrix.clone();
       // Hãy transform trục về local space của group
-      localAxis = new THREE.Vector3(0, 1, 0); // Trục X local
+      localAxis = new THREE.Vector3(1, 0, 0); // Trục X local
       const rotation = new THREE.Matrix4().extractRotation(currentMatrix);
-      const worldAxis = localAxis.clone().applyMatrix4(rotation); // Chuyển sang world
+      const worldAxis = localAxis.clone().applyMatrix4(rotation).normalize(); // Chuyển sang world
       // Tạo các ma trận transformation theo phương pháp TRT:
       // T2 * R * T1 * currentMatrix
       // T1: Dịch về pivot (pivot thành gốc tọa độ)
