@@ -987,7 +987,7 @@ async function placeAnchorFromLastHit() {
     group.matrix.copy(newMatrix);
   }
     
-  // Hàm quay mô hình quanh trục local
+// Hàm quay mô hình quanh trục local
 // Hàm quay mô hình quanh trục local (quay quanh trục Z thẳng đứng tại pivot point)
 function rotateAroundLocalAxis(localAxis, angleRad) {
     if (!currentAnchor || !currentAnchor.group) return;
@@ -996,7 +996,7 @@ function rotateAroundLocalAxis(localAxis, angleRad) {
       // Lấy matrix hiện tại
       const currentMatrix = group.matrix.clone();
       // Hãy transform trục về local space của group
-      const localAxis = new THREE.Vector3(0, 1, 0); // Trục X local
+      localAxis = new THREE.Vector3(0, 1, 0); // Trục X local
       const rotation = new THREE.Matrix4().extractRotation(currentMatrix);
       const worldAxis = localAxis.clone().applyMatrix4(rotation); // Chuyển sang world
       // Tạo các ma trận transformation theo phương pháp TRT:
