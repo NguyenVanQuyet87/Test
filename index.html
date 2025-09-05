@@ -763,9 +763,9 @@ function computePlacementMatrixFromMatrix(baseMatrix) {
       group.worldToLocal(localPos);
       axesGroup.position.copy(localPos);
       // Lấy hướng của object
-      const objectQuaternion = new THREE.Quaternion();
-      hit.object.getWorldQuaternion(objectQuaternion);
-      axesGroup.quaternion.copy(objectQuaternion);
+      //const objectQuaternion = new THREE.Quaternion();
+      //group.getWorldQuaternion(objectQuaternion);
+      //axesGroup.quaternion.copy(objectQuaternion);
     }
     group.add(axesGroup);
     infoEl.textContent = "Đã vào chế độ Adjust. Hệ trục được tạo tại vị trí hit.";
