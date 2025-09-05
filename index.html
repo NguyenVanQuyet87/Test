@@ -982,12 +982,7 @@ async function placeAnchorFromLastHit() {
   // Hàm quay mô hình quanh trục local
 function rotateAroundLocalAxis(localAxis, angleRad) {
     if (!currentAnchor || !currentAnchor.group) return;
-
     const group = currentAnchor.group;
-
-    // Đảm bảo localAxis là một vector đã được chuẩn hóa
-    localAxis = localAxis.clone().normalize();
-
     if (adjustPivotPoint) {
         // Lấy matrix hiện tại của group
         const matrix = group.matrix.clone();
@@ -1003,17 +998,15 @@ const dentaZ = adjustPivotPoint.z - currentPosition.z
         // Tạo ma trận transformation
         const transformationMatrix = new THREE.Matrix4()
             .makeTranslation(dentaX, dentaY, dentaZ)
-            .multiply(new THREE.Matrix4().makeRotationAxis(localAxis, angleRad)) // Quay
-            .multiply(new THREE.Matrix4().makeTranslation(-dentaX, -dentaY, -dentaZ)); // Dịch ngược lại
-
+            .multiply(new THREE.Matrix4().makeRotationAxis(localAxis, angleRad))
+            .multiply(new THREE.Matrix4().makeTranslation(-dentaX, -dentaY, -dentaZ));
         // Áp dụng transformation vào matrix hiện tại
         group.matrix.multiplyMatrices(matrix, transformationMatrix);
-
         group.matrixWorldNeedsUpdate = true;
     } else {
         // Xoay quanh gốc group
         const rotationQuat = new THREE.Quaternion().setFromAxisAngle(localAxis, angleRad);
-        group.quaternion.multiply(rotationQuat);
+     group.quaternion.multiply(rotationQuat);
         group.matrixWorldNeedsUpdate = true;
     }
 }
@@ -1038,8 +1031,7 @@ const dentaZ = adjustPivotPoint.z - currentPosition.z
       }
     } 
   });
-    
-  renderer.domElement.addEventListener("touchend",()=>
+     renderer.domElement.addEventListener("touchend",()=>
     { 
       isDragging=false; 
     });
