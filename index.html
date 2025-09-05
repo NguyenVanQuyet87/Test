@@ -981,18 +981,40 @@ async function placeAnchorFromLastHit() {
     
   // Hàm quay mô hình quanh trục local
   function rotateAroundLocalAxis(localAxis, angleRad) {
-    if (!currentAnchor || !currentAnchor.group) return;
+    if (!currentAnchor || !currentAnchor.group || !currentAnchor.pivotMatrix) return;
+    
     const group = currentAnchor.group;
-    const pivot = currentAnchor.pivotMatrix || new THREE.Matrix4();
-  
-    const rot = new THREE.Matrix4().makeRotationAxis(localAxis.clone().normalize(), angleRad);
-  
-    const newMatrix = new THREE.Matrix4()
-      .multiplyMatrices(pivot, rot)               // quay quanh pivot
-      .multiply(pivot.clone().invert())
-      .multiply(group.matrix);
-  
-    group.matrix.copy(newMatrix);
+    const matrix = group.matrix.clone();
+    const quaternion = new THREE.Quaternion();
+    const position = new THREE.Vector3();
+    const scale = new THREE.Vector3();
+    
+    matrix.decompose(position, quaternion, scale);
+    
+    // Chuyển pivot point từ world space sang local space của group
+    const localPivot = currentAnchor.pivotMatrix.clone();
+    group.worldToLocal(localPivot);
+    
+    // Tạo rotation quaternion
+    const rotationQuat = new THREE.Quaternion().setFromAxisAngle(localAxis, angleRad);
+    
+    // Áp dụng rotation cho quaternion hiện tại
+    quaternion.multiply(rotationQuat);
+    
+    // Tính toán vị trí mới sau khi xoay quanh pivot point
+    const relativePos = position.clone().sub(currentAnchor.pivotMatrix);
+    relativePos.applyQuaternion(rotationQuat);
+    position.copy(currentAnchor.pivotMatrix).add(relativePos);
+    
+    matrix.compose(position, quaternion, scale);
+    group.matrix.copy(matrix);
+    
+    // Cập nhật hướng của axesGroup nếu có
+    if (axesGroup) {
+      const objectQuaternion = new THREE.Quaternion();
+      group.getWorldQuaternion(objectQuaternion);
+      axesGroup.quaternion.copy(objectQuaternion);
+    }
   }
     
   renderer.domElement.addEventListener("touchstart",(e)=>{ 
