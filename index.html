@@ -741,7 +741,7 @@ function computePlacementMatrixFromMatrix(baseMatrix) {
       return axisGroup;
     }
     const axisX = createAxis(axisLen, 0xff0000);
-    axisX.rotation.z = Math.PI/2; // quay thân X sang ngang
+    axisX.rotation.y = Math.PI/2; // quay thân X sang ngang
     axesGroup.add(axisX);
     
     const axisY = createAxis(axisLen, 0x00ff00);
@@ -749,7 +749,7 @@ function computePlacementMatrixFromMatrix(baseMatrix) {
     axesGroup.add(axisY);
     
     const axisZ = createAxis(axisLen, 0x0000ff);
-    axisZ.rotation.x = -Math.PI/2; // quay ra theo Z
+    axisZ.rotation.z = -Math.PI/2; // quay ra theo Z
     axesGroup.add(axisZ);
     
     // Căn orientation theo object được hit
