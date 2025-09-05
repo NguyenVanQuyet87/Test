@@ -854,30 +854,39 @@ function computePlacementMatrixFromMatrix(baseMatrix) {
       const refSpace = renderer.xr.getReferenceSpace();
       let targetPoint = null;
       if (currentAnchor && currentAnchor.anchor) {
-        const anchorSpace = currentAnchor.anchor.anchorSpace;
-        const anchorPose = frame.getPose(anchorSpace, refSpace);
-        if (anchorPose) {
-          // Ma trận của anchor tại frame hiện tại
-          const anchorMatrix = new THREE.Matrix4().fromArray(anchorPose.transform.matrix);
-          
-          // Chỉ lấy VỊ TRÍ từ anchor, giữ nguyên ĐỊNH HƯỚNG đã thiết lập
-          const currentPosition = new THREE.Vector3();
-          const currentQuaternion = new THREE.Quaternion();
-          const currentScale = new THREE.Vector3();
-          
-          // Phân rã ma trận hiện tại của group để lấy định hướng hiện tại
-          currentAnchor.group.matrix.decompose(currentPosition, currentQuaternion, currentScale);
-          
-          // Lấy vị trí mới từ anchor
-          const newPosition = new THREE.Vector3();
-          anchorMatrix.decompose(newPosition, new THREE.Quaternion(), new THREE.Vector3());
-          
-          // Tạo ma trận mới với vị trí từ anchor nhưng định hướng từ hệ trục đã thiết lập
-          const newMatrix = new THREE.Matrix4().compose(newPosition, currentQuaternion, currentScale);
-          
-          // Cập nhật group
-          currentAnchor.group.matrix.copy(newMatrix);
-          currentAnchor.group.matrixWorldNeedsUpdate = true;
+        try {
+          // Kiểm tra xem anchor có anchorSpace không
+          if (currentAnchor.anchor.anchorSpace) {
+            const anchorPose = frame.getPose(currentAnchor.anchor.anchorSpace, refSpace);
+            
+            if (anchorPose) {
+              // Ma trận của anchor tại frame hiện tại
+              const anchorMatrix = new THREE.Matrix4().fromArray(anchorPose.transform.matrix);
+              
+              // Lấy định hướng hiện tại từ group
+              const currentPosition = new THREE.Vector3();
+              const currentQuaternion = new THREE.Quaternion();
+              const currentScale = new THREE.Vector3();
+              
+              currentAnchor.group.matrix.decompose(currentPosition, currentQuaternion, currentScale);
+              
+              // Lấy chỉ VỊ TRÍ từ anchor
+              const anchorPosition = new THREE.Vector3();
+              const anchorQuaternion = new THREE.Quaternion();
+              const anchorScale = new THREE.Vector3();
+              anchorMatrix.decompose(anchorPosition, anchorQuaternion, anchorScale);
+              
+              // Tạo ma trận mới với vị trí từ anchor nhưng định hướng hiện tại
+              const newMatrix = new THREE.Matrix4().compose(anchorPosition, currentQuaternion, currentScale);
+              
+              // Cập nhật group
+              currentAnchor.group.matrix.copy(newMatrix);
+              currentAnchor.group.matrixWorldNeedsUpdate = true;
+            }
+          }
+        } catch (e) {
+          console.warn("Lỗi khi cập nhật anchor:", e);
+          // Tiếp tục mà không làm gián đoạn ứng dụng
         }
       }
       if (hitTestSource && refSpace) {
