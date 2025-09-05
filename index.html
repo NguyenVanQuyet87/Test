@@ -737,10 +737,10 @@ function computePlacementMatrixFromMatrix(baseMatrix) {
       axisGroup.add(cyl);
     
       // Mũi tên (hình nón)
-      const coneGeom = new THREE.ConeGeometry(0.005, 0.001, 16);
+      const coneGeom = new THREE.ConeGeometry(0.002, 0.01, 16);
       const coneMat = new THREE.MeshBasicMaterial({ color });
       const cone = new THREE.Mesh(coneGeom, coneMat);
-      cone.position.y = length + 0.005; // trên đỉnh thân trụ
+      cone.position.y = 0.2; // trên đỉnh thân trụ
       axisGroup.add(cone);
     
       return axisGroup;
@@ -987,6 +987,11 @@ function computePlacementMatrixFromMatrix(baseMatrix) {
     position.add(worldAxis.multiplyScalar(distance));
     matrix.compose(position, quaternion, scale);
     group.matrix.copy(matrix);
+if (axesGroup) {
+  axesGroup.matrix.copy(matrix);
+  axesGroup.matrixAutoUpdate = false;
+}
+
   }
     
   // Hàm quay mô hình quanh trục local
