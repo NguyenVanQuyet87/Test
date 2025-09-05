@@ -1006,8 +1006,8 @@ if (!currentAnchor || !currentAnchor.group) return;
         const newPosition = adjustPivotPoint.clone().add(pivotToPosition);
         
         // Quaternion mới: áp dụng rotation vào quaternion hiện tại
-        //const newQuaternion = rotationQuat.multiply(quaternion);
-        const newQuaternion = quaternion.clone(); // Giữ nguyên orientation
+        const newQuaternion = rotationQuat.multiply(quaternion);
+        //const newQuaternion = quaternion.clone(); // Giữ nguyên orientation
         // Tạo matrix mới
         const newMatrix = new THREE.Matrix4().compose(newPosition, newQuaternion, scale);
         
