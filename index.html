@@ -752,38 +752,15 @@ function computePlacementMatrixFromMatrix(baseMatrix) {
     const axisZ = createAxis(axisLen, 0x0000ff);
     axisZ.rotation.z = Math.PI/2; // quay ra theo Z
     axesGroup.add(axisZ);
-    
-     // Quan trọng: đặt vị trí hệ trục tại hit.point
-    if (hit.point) {
-      axesGroup.position.copy(hit.point);
-    }
-    // Căn orientation theo object được hit
-    if (hit.object) {
+    if (hit) {
+      // Nếu muốn dính vào anchor group
+      const localPos = hit.point.clone();
+      group.worldToLocal(localPos);
+      axesGroup.position.copy(localPos);
       // Lấy hướng của object
       const objectQuaternion = new THREE.Quaternion();
       hit.object.getWorldQuaternion(objectQuaternion);
-      //group.getWorldQuaternion(objectQuaternion);
-      // Áp dụng hướng cho hệ trục
-      axesGroup.position.copy(hit.point);
       axesGroup.quaternion.copy(objectQuaternion);
-    } else {
-      // Nếu không có object, sử dụng hướng của camera
-      const cameraDirection = new THREE.Vector3();
-      camera.getWorldDirection(cameraDirection);
-      cameraDirection.y = 0;
-      cameraDirection.normalize();
-      const cameraPos = new THREE.Vector3();
-      camera.getWorldPosition(cameraPos);
-     
-      // Tạo ma trận định hướng cho trục
-      const zAxis = new THREE.Vector3(0, 1, 0); // Trục Z thẳng đứng
-      const xAxis = new THREE.Vector3().crossVectors(zAxis, cameraDirection).normalize(); // Trục X vuông góc với hướng camera và trục Z
-      const yAxis = new THREE.Vector3().crossVectors(zAxis, xAxis).normalize(); // Trục Y vuông góc với trục X và Z
-      
-      // Tạo quaternion từ các trục
-      const matrix = new THREE.Matrix4().makeBasis(xAxis, yAxis, zAxis);
-       axesGroup.position.copy(cameraPos);
-      axesGroup.quaternion.setFromRotationMatrix(matrix);
     }
     group.add(axesGroup);
     infoEl.textContent = "Đã vào chế độ Adjust. Hệ trục được tạo tại vị trí hit.";
