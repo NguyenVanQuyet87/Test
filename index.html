@@ -589,10 +589,14 @@ function computePlacementMatrixFromMatrix(baseMatrix) {
   }
     const group = new THREE.Group();
     group.matrixAutoUpdate=false;
-    if (pose) {
-      const placementMatrix = computePlacementMatrixFromMatrix(new THREE.Matrix4().fromArray(pose.transform.matrix));
-      group.matrix.copy(placementMatrix);
-    }
+    
+    const placementMatrix = computePlacementMatrixFromMatrix(new THREE.Matrix4().fromArray(pose.transform.matrix));
+    const offset = new THREE.Matrix4()
+      .copy(placementMatrix)
+      .premultiply(new THREE.Matrix4().copy(anchorMatrix).invert());
+    currentAnchor = { anchor, group, offset };
+    group.matrix.copy(placementMatrix);
+
     PLACEMENTS_ROOT.add(group);
     const placed = cloneModel(modelTemplate);
     group.add(placed);
@@ -850,13 +854,29 @@ function computePlacementMatrixFromMatrix(baseMatrix) {
       const refSpace = renderer.xr.getReferenceSpace();
       let targetPoint = null;
       if (currentAnchor && currentAnchor.anchor) {
-        const anchorSpace = currentAnchor.anchor.anchorSpace; // XRSpace của anchor
+        const anchorSpace = currentAnchor.anchor.anchorSpace;
         const anchorPose = frame.getPose(anchorSpace, refSpace);
         if (anchorPose) {
           // Ma trận của anchor tại frame hiện tại
           const anchorMatrix = new THREE.Matrix4().fromArray(anchorPose.transform.matrix);
-          // Cập nhật group trong scene
-          currentAnchor.group.matrix.copy(anchorMatrix);
+          
+          // Chỉ lấy VỊ TRÍ từ anchor, giữ nguyên ĐỊNH HƯỚNG đã thiết lập
+          const currentPosition = new THREE.Vector3();
+          const currentQuaternion = new THREE.Quaternion();
+          const currentScale = new THREE.Vector3();
+          
+          // Phân rã ma trận hiện tại của group để lấy định hướng hiện tại
+          currentAnchor.group.matrix.decompose(currentPosition, currentQuaternion, currentScale);
+          
+          // Lấy vị trí mới từ anchor
+          const newPosition = new THREE.Vector3();
+          anchorMatrix.decompose(newPosition, new THREE.Quaternion(), new THREE.Vector3());
+          
+          // Tạo ma trận mới với vị trí từ anchor nhưng định hướng từ hệ trục đã thiết lập
+          const newMatrix = new THREE.Matrix4().compose(newPosition, currentQuaternion, currentScale);
+          
+          // Cập nhật group
+          currentAnchor.group.matrix.copy(newMatrix);
           currentAnchor.group.matrixWorldNeedsUpdate = true;
         }
       }
