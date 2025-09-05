@@ -770,10 +770,8 @@ async function placeAnchorFromLastHit() {
       const localPos = hit.point.clone();
       group.worldToLocal(localPos);
       axesGroup.position.copy(localPos);
-      // Lấy hướng của object
-      //const objectQuaternion = new THREE.Quaternion();
-      //group.getWorldQuaternion(objectQuaternion);
-      //axesGroup.quaternion.copy(objectQuaternion);
+      //Lưu pivotMatrix (hit point trong local space)
+      currentAnchor.pivotMatrix = new THREE.Matrix4().makeTranslation(localPos.x, localPos.y, localPos.z);
     }
     group.add(axesGroup);
     infoEl.textContent = "Đã vào chế độ Adjust. Hệ trục được tạo tại vị trí hit.";
@@ -857,7 +855,6 @@ async function placeAnchorFromLastHit() {
     if (frame) {
       const refSpace = renderer.xr.getReferenceSpace();
       let targetPoint = null;
-
       if (hitTestSource && refSpace) {
         const hits = frame.getHitTestResults(hitTestSource);
         if (hits.length>0 && !adjustMode) {
@@ -873,7 +870,6 @@ async function placeAnchorFromLastHit() {
         } else {
             reticle.visible=false; 
           }
-
       }
       // 2. Nếu không có → dùng raycaster vào mô hình 3D
         const raycaster = new THREE.Raycaster();
@@ -966,15 +962,21 @@ async function placeAnchorFromLastHit() {
   function translateAlongLocalAxis(localAxis, distance) {
     if (!currentAnchor || !currentAnchor.group) return;
     const group = currentAnchor.group;
-    const matrix = group.matrix.clone();
-    const quaternion = new THREE.Quaternion();
-    const position = new THREE.Vector3();
-    const scale = new THREE.Vector3();
-    matrix.decompose(position, quaternion, scale);
-    const worldAxis = localAxis.clone().applyQuaternion(quaternion).normalize();
-    position.add(worldAxis.multiplyScalar(distance));
-    matrix.compose(position, quaternion, scale);
-    group.matrix.copy(matrix);
+    const pivot = currentAnchor.pivotMatrix || new THREE.Matrix4();
+  
+    // Dịch chuyển quanh pivot
+    const move = new THREE.Matrix4().makeTranslation(
+      localAxis.x * distance,
+      localAxis.y * distance,
+      localAxis.z * distance
+    );
+  
+    const newMatrix = new THREE.Matrix4()
+      .multiplyMatrices(pivot, move)              // đưa vào pivot, dịch
+      .multiply(pivot.clone().invert())           // quay lại gốc
+      .multiply(group.matrix);                    // áp dụng cho group hiện tại
+  
+    group.matrix.copy(newMatrix);
   }
     
   // Hàm quay mô hình quanh trục local
