@@ -661,7 +661,8 @@ function computePlacementMatrixFromMatrix(baseMatrix) {
     } else {
       // Xóa hệ trục khi tắt chế độ Adjust
       if (axesGroup) {
-        PLACEMENTS_ROOT.remove(axesGroup);
+        const group = currentAnchor.group;
+        group.remove(axesGroup);
         axesGroup = null;
       }
     }
@@ -857,11 +858,7 @@ const group = currentAnchor.group;
       markerStatusEl.textContent = "Chưa phát hiện marker";
       markerDetected = false;
       hideQRFrame();
-      // Xóa hệ trục khi kết thúc session
-      if (axesGroup) {
-        scene.remove(axesGroup);
-        axesGroup = null;
-      }
+      
       adjustMode = false;
       heightSlider.style.display = 'none';
       rotationSlider.style.display = 'none';
@@ -883,10 +880,11 @@ const group = currentAnchor.group;
             // lấy tọa độ điểm targetPoint
             const pos = pose.transform.position;
             targetPoint = new THREE.Vector3(pos.x, pos.y, pos.z);
-          } else {
+          } 
+        } else {
             reticle.visible=false; 
           }
-        }
+
       }
       // 2. Nếu không có → dùng raycaster vào mô hình 3D
         const raycaster = new THREE.Raycaster();
