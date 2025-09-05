@@ -985,7 +985,7 @@ function rotateAroundLocalAxis(localAxis, angleRad) {
 if (!currentAnchor || !currentAnchor.group) return;
     const group = currentAnchor.group;
     
-    if (adjustPivotPoint) {
+    if (adjustPivotPoint && 1 == 2) {
         // Lấy thông tin hiện tại của group
         const currentMatrix = group.matrix.clone();
         const position = new THREE.Vector3();
