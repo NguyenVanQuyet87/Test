@@ -267,7 +267,15 @@
   let lastRotationValue = 0;
 
   const scene = new THREE.Scene();
-  const camera = new THREE.PerspectiveCamera(70, window.innerWidth/window.innerHeight, 0.01, 20);
+  //const camera = new THREE.PerspectiveCamera(70, window.innerWidth/window.innerHeight, 0.01, 20);
+  const aspect = window.innerWidth / window.innerHeight;
+  const d = 2; // zoom size, bạn điều chỉnh cho vừa
+  const camera = new THREE.OrthographicCamera(
+    -d * aspect, d * aspect, d, -d, 0.1, 100
+  );
+  camera.position.set(5, 5, 5);
+  camera.lookAt(0, 0, 0);
+    
   const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, precision: "highp" });
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.xr.enabled = true;
@@ -984,47 +992,36 @@ async function placeAnchorFromLastHit() {
 function rotateAroundLocalAxis(localAxis, angleRad) {
     if (!currentAnchor || !currentAnchor.group) return;
     const group = currentAnchor.group;
-    
     if (adjustPivotPoint) {
-
-        
-        // Lấy matrix hiện tại
-        const currentMatrix = group.matrix.clone();
-      
-// Hãy transform trục về local space của group
-const localAxis = new THREE.Vector3(1, 0, 0); // Trục X local
-const rotation = new THREE.Matrix4().extractRotation(currentMatrix);
-const worldAxis = localAxis.clone().applyMatrix4(rotation); // Chuyển sang world
-      
-        // Tạo các ma trận transformation theo phương pháp TRT:
-        // T2 * R * T1 * currentMatrix
-        
-        // T1: Dịch về pivot (pivot thành gốc tọa độ)
-        const T1 = new THREE.Matrix4().makeTranslation(
-            -adjustPivotPoint.x, 
-            -adjustPivotPoint.y, 
-            -adjustPivotPoint.z
-        );
-        
-        // R: Quay quanh trục Z tại gốc tọa độ
-        const R = new THREE.Matrix4().makeRotationAxis(worldZAxis, angleRad);
-        
-        // T2: Dịch trở lại vị trí pivot
-        const T2 = new THREE.Matrix4().makeTranslation(
-            adjustPivotPoint.x, 
-            adjustPivotPoint.y, 
-            adjustPivotPoint.z
-        );
-        
-        // Kết hợp: T2 * R * T1 * currentMatrix
-        const newMatrix = new THREE.Matrix4()
-            .multiplyMatrices(T2, R)      // T2 * R
-            .multiply(T1)                 // * T1
-            .multiply(currentMatrix);     // * currentMatrix
-        
-        // Cập nhật group
-        group.matrix.copy(newMatrix);
-        
+      // Lấy matrix hiện tại
+      const currentMatrix = group.matrix.clone();
+      // Hãy transform trục về local space của group
+      const localAxis = new THREE.Vector3(0, 1, 0); // Trục X local
+      const rotation = new THREE.Matrix4().extractRotation(currentMatrix);
+      const worldAxis = localAxis.clone().applyMatrix4(rotation); // Chuyển sang world
+      // Tạo các ma trận transformation theo phương pháp TRT:
+      // T2 * R * T1 * currentMatrix
+      // T1: Dịch về pivot (pivot thành gốc tọa độ)
+      const T1 = new THREE.Matrix4().makeTranslation(
+          -adjustPivotPoint.x, 
+          -adjustPivotPoint.y, 
+          -adjustPivotPoint.z
+      );
+      // R: Quay quanh trục Z tại gốc tọa độ
+      const R = new THREE.Matrix4().makeRotationAxis(worldZAxis, angleRad);
+      // T2: Dịch trở lại vị trí pivot
+      const T2 = new THREE.Matrix4().makeTranslation(
+          adjustPivotPoint.x, 
+          adjustPivotPoint.y, 
+          adjustPivotPoint.z
+      );
+      // Kết hợp: T2 * R * T1 * currentMatrix
+      const newMatrix = new THREE.Matrix4()
+          .multiplyMatrices(T2, R)      // T2 * R
+          .multiply(T1)                 // * T1
+          .multiply(currentMatrix);     // * currentMatrix
+      // Cập nhật group
+      group.matrix.copy(newMatrix);
     } else {
         // Quay quanh gốc của group - sử dụng trục Y world
         //const worldYAxis = new THREE.Vector3(0, 0, 1);
