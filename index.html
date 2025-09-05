@@ -746,16 +746,16 @@ function computePlacementMatrixFromMatrix(baseMatrix) {
       return axisGroup;
     }
     const axisX = createAxis(axisLen, 0xff0000);
-    axisX.rotation.y = Math.PI/2; // quay thân X sang ngang
+    axisX.rotation.x = -Math.PI/2; // quay thân X sang ngang
     axesGroup.add(axisX);
     
     const axisY = createAxis(axisLen, 0x00ff00);
     // mặc định dựng đứng theo Y
-    //axisY.rotation.y = Math.PI;
+    axisY.rotation.z = Math.PI/2;
     axesGroup.add(axisY);
     
     const axisZ = createAxis(axisLen, 0x0000ff);
-    axisZ.rotation.z = Math.PI/2; // quay ra theo Z
+    //axisZ.rotation.z = Math.PI/2; // quay ra theo Z
     axesGroup.add(axisZ);
     if (hit) {
       // Nếu muốn dính vào anchor group
