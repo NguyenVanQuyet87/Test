@@ -571,42 +571,45 @@ function computePlacementMatrixFromMatrix(baseMatrix) {
 
   return basis;
 }
-  async function placeAnchorFromLastHit() {
-    if (isPlacing) return;
-    const hit = lastHitResult;
-    const refSpace = renderer.xr.getReferenceSpace();
-    if (!hit || !refSpace || !modelTemplate) { isPlacing=false; return; }
+async function placeAnchorFromLastHit() {
+  if (isPlacing) return;
+  const hit = lastHitResult;
+  const refSpace = renderer.xr.getReferenceSpace();
+  if (!hit || !refSpace || !modelTemplate) { isPlacing = false; return; }
   
-    clearAllPlacementsAndAnchors();
-  
-    const hitPose = hit.getPose(refSpace);
-    const anchor = await hit.createAnchor?.(refSpace).catch(() => null);
-  
-    if (!hitPose || !anchor) {
-      infoEl.textContent = "Không thể tạo anchor, mô hình sẽ không được đặt.";
-      isPlacing = false;
-      return;
-    }
-  
-    const hitMatrix = new THREE.Matrix4().fromArray(hitPose.transform.matrix);
-    const placementMatrix = computePlacementMatrixFromMatrix(hitMatrix);
-    const offset = placementMatrix.clone().multiply(hitMatrix.clone().invert());
-  
-    const group = new THREE.Group();
-    group.matrixAutoUpdate = false;
-    group.matrix.copy(placementMatrix);
-  
-    PLACEMENTS_ROOT.add(group);
-    const placed = cloneModel(modelTemplate);
-    group.add(placed);
-    currentModel = placed;
-  
-    currentAnchor = { anchor, group, offset };
-    allAnchors.add(anchor);
-  
+  clearAllPlacementsAndAnchors();
+  const pose = hit.getPose(refSpace);
+  const anchor = await hit.createAnchor?.(refSpace).catch(() => null);
+
+  // Nếu không tạo được anchor thì bỏ qua
+  if (!pose || !anchor) {
+    infoEl.textContent = "Không thể tạo anchor, mô hình sẽ không được đặt.";
     isPlacing = false;
-    infoEl.textContent = "Mô hình đã được đặt và neo thành công!";
+    return;
   }
+  
+  const group = new THREE.Group();
+  group.matrixAutoUpdate = false;
+  
+  // QUAN TRỌNG: Áp dụng ma trận placement
+  if (pose) {
+    const placementMatrix = computePlacementMatrixFromMatrix(new THREE.Matrix4().fromArray(pose.transform.matrix));
+    group.matrix.copy(placementMatrix);
+  }
+  
+  PLACEMENTS_ROOT.add(group);
+  const placed = cloneModel(modelTemplate);
+  group.add(placed);
+  currentModel = placed;
+  currentAnchor = { anchor, group };
+  
+  if (anchor) {
+    allAnchors.add(anchor);
+  };
+  
+  infoEl.textContent = "Mô hình đã được đặt và neo thành công!";
+  isPlacing = false;
+}
 
   // Sự kiện này xảy ra khi có thiết bị cầm tay
   const controller = renderer.xr.getController(0);
@@ -856,19 +859,34 @@ function computePlacementMatrixFromMatrix(baseMatrix) {
       let targetPoint = null;
       if (currentAnchor && currentAnchor.anchor) {
         try {
-          const anchorSpace = currentAnchor.anchor.anchorSpace || currentAnchor.anchor.space;
-          const anchorPose = frame.getPose(anchorSpace, refSpace);
-          if (anchorPose) {
-            const anchorMatrix = new THREE.Matrix4().fromArray(anchorPose.transform.matrix);
-            const offset = currentAnchor.offset || new THREE.Matrix4().identity();
-            const finalMat = anchorMatrix.clone().multiply(offset);
-            currentAnchor.group.matrix.copy(finalMat);
-            currentAnchor.group.matrixWorldNeedsUpdate = true;
+          // Kiểm tra xem anchor có anchorSpace không
+          if (currentAnchor.anchor.anchorSpace) {
+            const anchorPose = frame.getPose(currentAnchor.anchor.anchorSpace, refSpace);
+            
+            if (anchorPose) {
+              // Ma trận của anchor tại frame hiện tại
+              const anchorMatrix = new THREE.Matrix4().fromArray(anchorPose.transform.matrix);
+              
+              // Lấy VỊ TRÍ từ anchor
+              const anchorPosition = new THREE.Vector3();
+              anchorMatrix.decompose(anchorPosition, new THREE.Quaternion(), new THREE.Vector3());
+              
+              // Lấy ROTATION và SCALE từ matrix hiện tại của group (giữ nguyên định hướng đã thiết lập)
+              const currentQuaternion = new THREE.Quaternion();
+              const currentScale = new THREE.Vector3();
+              currentAnchor.group.matrix.decompose(new THREE.Vector3(), currentQuaternion, currentScale);
+              
+              // Tạo ma trận mới với vị trí từ anchor nhưng rotation và scale từ hệ trục đã thiết lập
+              const newMatrix = new THREE.Matrix4().compose(anchorPosition, currentQuaternion, currentScale);
+              
+              // Cập nhật group
+              currentAnchor.group.matrix.copy(newMatrix);
+              currentAnchor.group.matrixWorldNeedsUpdate = true;
+            }
           }
-        } catch (err) {
-          console.warn("Lỗi khi cập nhật anchor:", err);
+        } catch (e) {
+          console.warn("Lỗi khi cập nhật anchor:", e);
         }
-      }
       if (hitTestSource && refSpace) {
         const hits = frame.getHitTestResults(hitTestSource);
         if (hits.length>0 && !adjustMode) {
@@ -986,10 +1004,6 @@ function computePlacementMatrixFromMatrix(baseMatrix) {
     position.add(worldAxis.multiplyScalar(distance));
     matrix.compose(position, quaternion, scale);
     group.matrix.copy(matrix);
-        // Cập nhật anchor với vị trí mới
-    if (currentAnchor.anchor && currentAnchor.anchor.setMatrix) {
-      currentAnchor.anchor.setMatrix(matrix.elements);
-    }
   }
     
   // Hàm quay mô hình quanh trục local
@@ -1005,10 +1019,6 @@ function computePlacementMatrixFromMatrix(baseMatrix) {
     quaternion.multiply(rotationQuat); // Local rotation
     matrix.compose(position, quaternion, scale);
     group.matrix.copy(matrix);
-        // Cập nhật anchor với vị trí mới
-    if (currentAnchor.anchor && currentAnchor.anchor.setMatrix) {
-      currentAnchor.anchor.setMatrix(matrix.elements);
-    }
   }
     
   renderer.domElement.addEventListener("touchstart",(e)=>{ 
