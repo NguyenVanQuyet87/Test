@@ -986,12 +986,16 @@ function rotateAroundLocalAxis(localAxis, angleRad) {
     const group = currentAnchor.group;
     
     if (adjustPivotPoint) {
-        // Sử dụng trục Z world (thẳng đứng)
-        const worldZAxis = new THREE.Vector3(1, 0, 0);
+
         
         // Lấy matrix hiện tại
         const currentMatrix = group.matrix.clone();
-        
+      
+// Hãy transform trục về local space của group
+const localAxis = new THREE.Vector3(1, 0, 0); // Trục X local
+const rotation = new THREE.Matrix4().extractRotation(currentMatrix);
+const worldAxis = localAxis.clone().applyMatrix4(rotation); // Chuyển sang world
+      
         // Tạo các ma trận transformation theo phương pháp TRT:
         // T2 * R * T1 * currentMatrix
         
