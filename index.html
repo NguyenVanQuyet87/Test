@@ -983,6 +983,7 @@ async function placeAnchorFromLastHit() {
 function rotateAroundLocalAxis(localAxis, angleRad) {
     if (!currentAnchor || !currentAnchor.group) return;
     const group = currentAnchor.group;
+    
     if (adjustPivotPoint) {
         // Lấy matrix hiện tại của group
         const matrix = group.matrix.clone();
@@ -991,26 +992,31 @@ function rotateAroundLocalAxis(localAxis, angleRad) {
         const currentScale = new THREE.Vector3();
         matrix.decompose(currentPosition, currentQuaternion, currentScale);
 
-const dentaX = adjustPivotPoint.x - currentPosition.x
-const dentaY = adjustPivotPoint.y - currentPosition.y
-const dentaZ = adjustPivotPoint.z - currentPosition.z
+        // Chuyển pivot point từ world space sang local space của group
+        const worldToLocalMatrix = new THREE.Matrix4().getInverse(matrix);
+        const localPivot = adjustPivotPoint.clone().applyMatrix4(worldToLocalMatrix);
 
-        // Tạo ma trận transformation
+        // Tạo ma trận transformation: dịch về pivot -> quay -> dịch ngược lại
         const transformationMatrix = new THREE.Matrix4()
-            .makeTranslation(dentaX, dentaY, dentaZ)
+            .makeTranslation(-localPivot.x, -localPivot.y, -localPivot.z)
             .multiply(new THREE.Matrix4().makeRotationAxis(localAxis, angleRad))
-            .multiply(new THREE.Matrix4().makeTranslation(-dentaX, -dentaY, -dentaZ));
-        // Áp dụng transformation vào matrix hiện tại
-        group.matrix.multiplyMatrices(matrix, transformationMatrix);
+            .multiply(new THREE.Matrix4().makeTranslation(localPivot.x, localPivot.y, localPivot.z));
+
+        // Áp dụng transformation vào matrix hiện tại (đúng thứ tự)
+        matrix.multiply(transformationMatrix);
+        
+        // Cập nhật matrix của group
+        group.matrix.copy(matrix);
+        group.matrix.decompose(group.position, group.quaternion, group.scale);
         group.matrixWorldNeedsUpdate = true;
+        
     } else {
         // Xoay quanh gốc group
         const rotationQuat = new THREE.Quaternion().setFromAxisAngle(localAxis, angleRad);
-     group.quaternion.multiply(rotationQuat);
+        group.quaternion.multiply(rotationQuat);
         group.matrixWorldNeedsUpdate = true;
     }
-}
- renderer.domElement.addEventListener("touchstart",(e)=>{ 
+} renderer.domElement.addEventListener("touchstart",(e)=>{ 
     if (e.touches.length===1) { 
       isDragging=true; 
       previousTouchX=e.touches[0].clientX; 
