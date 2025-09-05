@@ -590,7 +590,7 @@ function computePlacementMatrixFromMatrix(baseMatrix) {
   
     const hitMatrix = new THREE.Matrix4().fromArray(hitPose.transform.matrix);
     const placementMatrix = computePlacementMatrixFromMatrix(hitMatrix);
-    const offset = hitMatrix.clone().invert().multiply(placementMatrix);
+    const offset = placementMatrix.clone().multiply(hitMatrix.clone().invert());
   
     const group = new THREE.Group();
     group.matrixAutoUpdate = false;
