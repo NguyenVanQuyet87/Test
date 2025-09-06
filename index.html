@@ -752,8 +752,7 @@ async function placeAnchorFromLastHit() {
     lastRotationValue = value;
   });
 
-    
-  let  = null; // Lưu hit point (world space)
+  let adjustPivotPoint  = null; // Lưu hit point (world space)
   // Hàm tạo hệ trục tại vị trí hit
   function createAxesAtHit(hit) {
     const group = currentAnchor.group;
