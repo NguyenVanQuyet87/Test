@@ -1038,15 +1038,9 @@ function onSelect(event) {
           if (frame.getDepthInformation) {
               // Lấy depth data từ view đầu tiên
               depthData = frame.getDepthInformation(frame.session.views[0]);
-              
               // Debug: kiểm tra depth data
               if (depthData) {
-                  infoEl.textContent = `Depth data available
-                      width: ${depthData.width},
-                      height: ${depthData.height},
-                      depthNear: ${depthData.depthNear},
-                      depthFar: ${depthData.depthFar}
-                  `;
+                  infoEl.textContent = `Depth data available ${depthData.width}`
               }
           }
       } catch (error) {
