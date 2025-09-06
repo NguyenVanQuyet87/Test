@@ -1003,10 +1003,14 @@ async function placeAnchorFromLastHit() {
     const group = currentAnchor.group;
     if (adjustPivotPoint) {
         // Lấy matrix hiện tại
+        group.updateMatrixWorld(true);
         const currentMatrix = group.matrix.clone();
         // Transform trục về world space của group
-        const rotation = new THREE.Matrix4().extractRotation(currentMatrix);
-        const worldAxis = localAxis.clone().applyMatrix4(rotation).normalize();
+        //const rotation = new THREE.Matrix4().extractRotation(currentMatrix);
+        //const worldAxis = localAxis.clone().applyMatrix4(rotation).normalize();
+        const worldQuat = new THREE.Quaternion();
+        group.getWorldQuaternion(worldQuat);
+        const worldAxis = localAxis.clone().applyQuaternion(worldQuat).normalize();
         // Tạo vector dịch chuyển theo world axis
         const moveVec = worldAxis.clone().multiplyScalar(distance);
         // Tạo ma trận dịch chuyển
@@ -1020,9 +1024,7 @@ async function placeAnchorFromLastHit() {
         // Cập nhật group
         group.matrix.copy(newMatrix);
         // CẬP NHẬT PIVOT POINT: Chuyển moveVec từ world space sang local space
-        const inverseRotation = new THREE.Matrix4().copy(rotation).invert();
-        const localMoveVec = moveVec.clone().applyMatrix4(inverseRotation);
-        adjustPivotPoint.add(localMoveVec);
+        adjustPivotPoint.add(moveVec)
     } else {
     }
     // Đảm bảo cập nhật
