@@ -885,6 +885,8 @@ async function placeAnchorFromLastHit() {
     return null;
   }
 
+    // Phần này xác định điểm trên vật thật xử dụng Depth Api
+    
 let depthData = null;
 
 // Hàm lấy hit point trên vật thật
@@ -1030,6 +1032,28 @@ function onSelect(event) {
     if (frame) {
       const refSpace = renderer.xr.getReferenceSpace();
       let targetPoint = null;
+
+      // 1. KIỂM TRA VÀ LẤY DEPTH DATA
+      try {
+          if (frame.getDepthInformation) {
+              // Lấy depth data từ view đầu tiên
+              depthData = frame.getDepthInformation(frame.session.views[0]);
+              
+              // Debug: kiểm tra depth data
+              if (depthData) {
+                  infoEl.textContent = `Depth data available
+                      width: ${depthData.width},
+                      height: ${depthData.height},
+                      depthNear: ${depthData.depthNear},
+                      depthFar: ${depthData.depthFar}
+                  `;
+              }
+          }
+      } catch (error) {
+          infoEl.textContent = 'Không thể lấy depth data:';
+          depthData = null;
+      }
+
       if (hitTestSource && refSpace) {
         const hits = frame.getHitTestResults(hitTestSource);
         if (hits.length>0 && !adjustMode) {
