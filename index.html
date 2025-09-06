@@ -1008,23 +1008,31 @@ async function placeAnchorFromLastHit() {
 
   // Hàm dịch chuyển mô hình theo trục local
   function translateAlongLocalAxis(localAxis, distance) {
-    if (!currentAnchor || !currentAnchor.group) return;
+  if (!currentAnchor || !currentAnchor.group) return;
     const group = currentAnchor.group;
-    const pivot = currentAnchor.pivotMatrix || new THREE.Matrix4();
   
-    // Dịch chuyển quanh pivot
-    const move = new THREE.Matrix4().makeTranslation(
-      localAxis.x * distance,
-      localAxis.y * distance,
-      localAxis.z * distance
+    const currentMatrix = group.matrix.clone();
+    const rotation = new THREE.Matrix4().extractRotation(currentMatrix);
+    const worldAxis = localAxis.clone().applyMatrix4(rotation).normalize();
+  
+    // Chỉ lấy đúng 1 trục (x hoặc y hoặc z)
+    let moveVec = new THREE.Vector3();
+    if (Math.abs(localAxis.x) > 0) moveVec.set(worldAxis.x, 0, 0);
+    if (Math.abs(localAxis.y) > 0) moveVec.set(0, worldAxis.y, 0);
+    if (Math.abs(localAxis.z) > 0) moveVec.set(0, 0, worldAxis.z);
+    moveVec.normalize();
+  
+    const translation = new THREE.Matrix4().makeTranslation(
+      moveVec.x * distance,
+      moveVec.y * distance,
+      moveVec.z * distance
     );
   
-    const newMatrix = new THREE.Matrix4()
-      .multiplyMatrices(pivot, move)              // đưa vào pivot, dịch
-      .multiply(pivot.clone().invert())           // quay lại gốc
-      .multiply(group.matrix);                    // áp dụng cho group hiện tại
-  
+    const newMatrix = new THREE.Matrix4().multiplyMatrices(translation, currentMatrix);
     group.matrix.copy(newMatrix);
+  
+    group.matrixAutoUpdate = false;
+    group.matrixWorldNeedsUpdate = true;
   }
     
 // Hàm quay mô hình quanh trục local
