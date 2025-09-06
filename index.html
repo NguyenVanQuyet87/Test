@@ -720,7 +720,9 @@ async function placeAnchorFromLastHit() {
       if (axesGroup) {
         const group = currentAnchor.group;
         group.remove(axesGroup);
+        group.remove(adjustPivotPoint);
         axesGroup = null;
+        adjustPivotPoint = null;
       }
     }
   });
@@ -760,8 +762,10 @@ async function placeAnchorFromLastHit() {
     if (axesGroup) {
       group.remove(axesGroup);
       axesGroup = null;
+      group.remove(adjustPivotPoint);
+      adjustPivotPoint = null;
     }
-  // Nếu hit không tồn tại thì lấy theo gốc anchor
+   // Nếu hit không tồn tại thì lấy theo gốc anchor
    if (!hit) {
       const matrix = group.matrix.clone();
       const quaternion = new THREE.Quaternion();
@@ -773,14 +777,10 @@ async function placeAnchorFromLastHit() {
         object: group,
       };
     }
-
     if (!hit) return;
     // Nếu hit tồn tại thì lấy theo hit
     // Tạo group mới cho trục
     axesGroup = new THREE.Group();
-    
-    // Chiều dài trục (kéo dài 3m mỗi phía)
-    const axisLen = 1;
     function createAxis(length, color) {
       const axisGroup = new THREE.Group();
       // Thân trụ
@@ -796,29 +796,26 @@ async function placeAnchorFromLastHit() {
       const cone = new THREE.Mesh(coneGeom, coneMat);
       cone.position.y = 0.2; // trên đỉnh thân trụ
       axisGroup.add(cone);
-    
       return axisGroup;
     }
+    const axisLen = 1;
     const axisX = createAxis(axisLen, 0xff0000);
     axisX.rotation.z = -Math.PI/2; // quay thân X sang ngang
     axesGroup.add(axisX);
-    
     const axisY = createAxis(axisLen, 0x00ff00);
     // mặc định dựng đứng theo Y
     //axisY.rotation.z = Math.PI;
     axesGroup.add(axisY);
-    
     const axisZ = createAxis(axisLen, 0x0000ff);
     axisZ.rotation.x = Math.PI/2; // quay ra theo Z
     axesGroup.add(axisZ);
-    if (hit) {
-      // Nếu muốn dính vào anchor group
-      const localPos = hit.point.clone();
-      group.worldToLocal(localPos);
-      axesGroup.position.copy(localPos);
-      //Lưu adjustPivotPoint
-      adjustPivotPoint = hit.point.clone();
-    }
+    // Nếu muốn dính vào anchor group
+    const localPos = hit.point.clone();
+    group.worldToLocal(localPos);
+    axesGroup.position.copy(localPos);
+    //Lưu adjustPivotPoint
+    adjustPivotPoint = hit.point.clone();
+    group.add(adjustPivotPoint);
     group.add(axesGroup);
     infoEl.textContent = "Đã vào chế độ Adjust. Hệ trục được tạo tại vị trí hit.";
   }
@@ -1000,17 +997,14 @@ async function placeAnchorFromLastHit() {
         markerDetected = false;
         hideQRFrame();
       }
-
     }
     renderer.render(scene,camera);
-
   });
 
   // Hàm dịch chuyển mô hình theo trục local
   function translateAlongLocalAxis(localAxis, distance) {
     if (!currentAnchor || !currentAnchor.group) return;
     const group = currentAnchor.group;
-    
     if (adjustPivotPoint) {
         // Lấy matrix hiện tại
         const currentMatrix = group.matrix.clone();
@@ -1035,10 +1029,7 @@ async function placeAnchorFromLastHit() {
         // Cập nhật group
         group.matrix.copy(newMatrix);
     } else {
-        // Nếu không có pivot point, có thể thêm logic khác ở đây
-        // Hiện tại để trống như hàm quay
     }
-    
     // Đảm bảo cập nhật
     group.matrixAutoUpdate = false;
     group.matrixWorldNeedsUpdate = true;
