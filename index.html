@@ -720,7 +720,6 @@ async function placeAnchorFromLastHit() {
       if (axesGroup) {
         const group = currentAnchor.group;
         group.remove(axesGroup);
-        group.remove(adjustPivotPoint);
         axesGroup = null;
         adjustPivotPoint = null;
       }
@@ -754,7 +753,7 @@ async function placeAnchorFromLastHit() {
   });
 
     
-  let adjustPivotPoint = null; // Lưu hit point (world space)
+  let  = null; // Lưu hit point (world space)
   // Hàm tạo hệ trục tại vị trí hit
   function createAxesAtHit(hit) {
     const group = currentAnchor.group;
@@ -762,7 +761,6 @@ async function placeAnchorFromLastHit() {
     if (axesGroup) {
       group.remove(axesGroup);
       axesGroup = null;
-      group.remove(adjustPivotPoint);
       adjustPivotPoint = null;
     }
    // Nếu hit không tồn tại thì lấy theo gốc anchor
@@ -815,7 +813,6 @@ async function placeAnchorFromLastHit() {
     axesGroup.position.copy(localPos);
     //Lưu adjustPivotPoint
     adjustPivotPoint = hit.point.clone();
-    group.add(adjustPivotPoint);
     group.add(axesGroup);
     infoEl.textContent = "Đã vào chế độ Adjust. Hệ trục được tạo tại vị trí hit.";
   }
@@ -1008,26 +1005,25 @@ async function placeAnchorFromLastHit() {
     if (adjustPivotPoint) {
         // Lấy matrix hiện tại
         const currentMatrix = group.matrix.clone();
-        
         // Transform trục về world space của group
         const rotation = new THREE.Matrix4().extractRotation(currentMatrix);
         const worldAxis = localAxis.clone().applyMatrix4(rotation).normalize();
-        
         // Tạo vector dịch chuyển theo world axis
         const moveVec = worldAxis.clone().multiplyScalar(distance);
-        
         // Tạo ma trận dịch chuyển
         const translation = new THREE.Matrix4().makeTranslation(
             moveVec.x,
             moveVec.y, 
             moveVec.z
         );
-        
         // Áp dụng: T * currentMatrix
         const newMatrix = new THREE.Matrix4().multiplyMatrices(translation, currentMatrix);
-        
         // Cập nhật group
         group.matrix.copy(newMatrix);
+        // CẬP NHẬT PIVOT POINT: Chuyển moveVec từ world space sang local space
+        const inverseRotation = new THREE.Matrix4().copy(rotation).invert();
+        const localMoveVec = moveVec.clone().applyMatrix4(inverseRotation);
+        adjustPivotPoint.add(localMoveVec);
     } else {
     }
     // Đảm bảo cập nhật
