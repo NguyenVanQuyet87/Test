@@ -351,16 +351,32 @@ const rotationYSlider = document.getElementById("rotationYSlider");
         .then(r => r.blob())
         .then(b => createImageBitmap(b));
       
-      document.body.appendChild(ARButton.createButton(renderer, {
-        requiredFeatures: ["image-tracking"],
+      //document.body.appendChild(ARButton.createButton(renderer, {
+        //requiredFeatures: ["image-tracking"],
+        //trackedImages: [
+          //{
+            //image: imgBitmap,
+            widthInMeters: 0.15
+          //}
+        //],
+        //optionalFeatures: ["hit-test", "anchors", "dom-overlay"],
+        //domOverlay: { root: document.body }
+      //}));
+        document.body.appendChild(ARButton.createButton(renderer, {
+        requiredFeatures: ["hit-test"],
+        optionalFeatures: ["image-tracking","depth-sensing", "anchors", "dom-overlay"],
         trackedImages: [
           {
             image: imgBitmap,
             widthInMeters: 0.15
           }
         ],
-        optionalFeatures: ["hit-test", "anchors", "dom-overlay"],
-        domOverlay: { root: document.body }
+        domOverlay: { root: document.body },
+        // Nếu depth-sensing được hỗ trợ thì sẽ đọc block này
+        depthSensing: {
+          usagePreference: ["cpu-optimized", "gpu-optimized"],
+          dataFormatPreference: ["luminance-alpha", "float32"]
+        }
       }));
     } catch (e) {
       console.error("Lỗi khi tải marker:", e);
@@ -868,6 +884,124 @@ async function placeAnchorFromLastHit() {
     }
     return null;
   }
+
+let depthData = null;
+
+// Hàm lấy hit point trên vật thật
+async function getHitPointWithDepthAPI(x, y) {
+    if (!depthData) return null;
+
+    const viewerPose = frame.getViewerPose(referenceSpace);
+    if (!viewerPose) return null;
+
+    // Lấy ray từ camera đến điểm click
+    const ray = getRayFromScreenPoint(x, y, viewerPose);
+    
+    // Sử dụng depth data để tìm hit point
+    const hitPoint = findHitPointWithDepthData(ray, depthData, viewerPose);
+    
+    return hitPoint;
+}
+
+// Hàm tạo ray từ điểm màn hình
+function getRayFromScreenPoint(x, y, viewerPose) {
+    const view = viewerPose.views[0];
+    const devicePixelRatio = window.devicePixelRatio || 1;
+    
+    // Chuyển đổi tọa độ màn hình sang normalized device coordinates
+    const ndcX = (x * devicePixelRatio / view.viewport.width) * 2 - 1;
+    const ndcY = -(y * devicePixelRatio / view.viewport.height) * 2 + 1;
+    
+    // Tạo ray trong không gian camera
+    const rayOrigin = new THREE.Vector3(0, 0, 0);
+    const rayDirection = new THREE.Vector3(ndcX, ndcY, -1)
+        .unproject(view.camera)
+        .sub(rayOrigin)
+        .normalize();
+    
+    return {
+        origin: rayOrigin.applyMatrix4(view.transform.matrix),
+        direction: rayDirection.transformDirection(view.transform.matrix)
+    };
+}
+function findHitPointWithDepthData(ray, depthData, viewerPose) {
+    const view = viewerPose.views[0];
+    const depthInfo = depthData.getDepthInMeters(view);
+    
+    if (!depthInfo) return null;
+    
+    const maxDistance = 10.0; // Khoảng cách tối đa
+    const stepSize = 0.1;     // Bước kiểm tra
+    
+    // Ray marching để tìm hit point
+    let currentDistance = 0;
+    while (currentDistance < maxDistance) {
+        const samplePoint = ray.origin.clone()
+            .add(ray.direction.clone().multiplyScalar(currentDistance));
+        
+        // Chuyển điểm sang UV coordinates
+        const uv = worldToUV(samplePoint, view, depthInfo);
+        
+        if (uv) {
+            // Lấy depth value từ depth buffer
+            const depthValue = getDepthValue(uv.u, uv.v, depthInfo);
+            
+            if (depthValue !== null && Math.abs(currentDistance - depthValue) < 0.05) {
+                // Tìm thấy hit point!
+                return samplePoint;
+            }
+        }
+        
+        currentDistance += stepSize;
+    }
+    
+    return null;
+}
+   function worldToUV(worldPoint, view, depthInfo) {
+    // Chuyển world point sang clip space
+    const clipSpace = worldPoint.clone()
+        .applyMatrix4(view.projectionMatrix)
+        .applyMatrix4(view.transform.inverse.matrix);
+    
+    // Chuyển clip space sang UV coordinates
+    const u = (clipSpace.x + 1) / 2;
+    const v = (-clipSpace.y + 1) / 2;
+    
+    // Kiểm tra trong bounds
+    if (u >= 0 && u <= 1 && v >= 0 && v <= 1) {
+        return { u, v };
+    }
+    
+    return null;
+}
+function getDepthValue(u, v, depthInfo) {
+    const width = depthInfo.width;
+    const height = depthInfo.height;
+    
+    const x = Math.floor(u * (width - 1));
+    const y = Math.floor(v * (height - 1));
+    
+    const index = y * width + x;
+    
+    if (index >= 0 && index < depthInfo.data.length) {
+        return depthInfo.data[index];
+    }
+    
+    return null;
+}
+  // Xử lý sự kiện click/tap
+function onSelect(event) {
+    if (!depthData) return;
+    
+    // Lấy tọa độ màn hình
+    const x = event.clientX || event.touches[0].clientX;
+    const y = event.clientY || event.touches[0].clientY;
+    
+    // Lấy hit point sử dụng Depth API
+    const hitPoint = getHitPointWithDepthAPI(x, y);
+    infoEl.textContent = "Hit point trên vật thật:";
+
+}
     
   // Sự kiện bắt đầu vào chế độ AR  
   renderer.xr.addEventListener("sessionstart", async ()=>{
