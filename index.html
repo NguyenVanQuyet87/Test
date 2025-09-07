@@ -665,8 +665,7 @@ async function placeAnchorFromLastHit() {
   });
   scene.add(controller);
  renderer.domElement.addEventListener("click", ()=>{ 
-    const s=renderer.xr.getSession(); 
-    if (s && reticle.visible && !isPlacing) {
+    if (reticle.visible && !isPlacing) {
       placeAnchorFromLastHit(); 
       isPlacing = true;
     }
@@ -1028,25 +1027,10 @@ function onSelect(event) {
     });
   });
     
-let lastAnchorUpdate = 0;
-const anchorUpdateInterval = 200; // ms, tức ~5 lần/giây
-    
   renderer.setAnimationLoop((t,frame)=>{
     if (frame) {
       const refSpace = renderer.xr.getReferenceSpace();
       let targetPoint = null;
-   if (currentAnchor && currentAnchor.anchor) {
-      if (t - lastAnchorUpdate > anchorUpdateInterval) {
-        const anchorPose = frame.getPose(currentAnchor.anchor.anchorSpace, refSpace);
-        if (anchorPose) {
-          const placementMatrix = computePlacementMatrixFromMatrix(
-            new THREE.Matrix4().fromArray(anchorPose.transform.matrix)
-          );
-          currentAnchor.group.matrix.copy(placementMatrix);
-        }
-        lastAnchorUpdate = t;
-      }
-    }
       // 1. KIỂM TRA VÀ LẤY DEPTH DATA
       try {
           if (frame.getDepthInformation) {
@@ -1054,11 +1038,11 @@ const anchorUpdateInterval = 200; // ms, tức ~5 lần/giây
               depthData = frame.getDepthInformation(frame.session.views[0]);
               // Debug: kiểm tra depth data
               if (depthData) {
-                  infoEl.textContent = `Depth data available ${depthData.width}`
+                  infoEl.textContent = `Depth data available.`
               }
           }
       } catch (error) {
-          infoEl.textContent = 'Không thể lấy depth data:';
+          infoEl.textContent = 'Không thể lấy depth data.';
           depthData = null;
       }
 
