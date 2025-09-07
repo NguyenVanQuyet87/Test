@@ -736,7 +736,7 @@ async function placeAnchorFromLastHit() {
       if (axesGroup) {
         const group = currentAnchor.group;
         group.remove(axesGroup);
-        scene.remove(axesGroup);
+        scene.remove(worldAxesGroup);
         axesGroup = null;
         worldAxesGroup = null;
         adjustPivotPoint = null;
