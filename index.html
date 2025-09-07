@@ -834,13 +834,19 @@ async function placeAnchorFromLastHit() {
     const axisX = createAxis(axisLen, 0xff0000);
     axisX.rotation.z = -Math.PI/2; // quay thân X sang ngang
     const labelX = createTextLabel("X", "red");
-    labelX.position.set(1, 0, 0); // đặt xa đầu trục X
+    labelX.position.set(0.5, 0, 0); // đặt xa đầu trục X
     axesGroup.add(labelX);
     axesGroup.add(axisX);
     const axisY = createAxis(axisLen, 0x00ff00);
-    axesGroup.add(axisY);
+
+ const labelY = createTextLabel("Y", "green");
+    labelY.position.set(0, 0.5, 0); // đặt xa đầu trục Y
+    axesGroup.add(labelY);   axesGroup.add(axisY);
     const axisZ = createAxis(axisLen, 0x0000ff);
     axisZ.rotation.x = Math.PI/2; // quay ra theo Z
+const labelZ = createTextLabel("Z", "blue");
+    labelZ.position.set(0, 0, 0.5); // đặt xa đầu trục Z
+    axesGroup.add(labelZ);
     axesGroup.add(axisZ);
     // Tạo hệ trục world gắn với Pivot
     const worldAxisX = createAxis(axisLen, 0xff0000);
