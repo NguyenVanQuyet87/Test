@@ -1186,8 +1186,10 @@ function onSelect(event) {
         const newMatrix = new THREE.Matrix4().multiplyMatrices(translation, currentMatrix);
         // Cập nhật group
         group.matrix.copy(newMatrix);
+        
         // CẬP NHẬT PIVOT POINT: Chuyển moveVec từ world space sang local space
         adjustPivotPoint.add(moveVec)
+        worldAxesGroup.position.copy(adjustPivotPoint);
     } else {
     }
     // Đảm bảo cập nhật
