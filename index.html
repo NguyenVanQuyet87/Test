@@ -736,7 +736,9 @@ async function placeAnchorFromLastHit() {
       if (axesGroup) {
         const group = currentAnchor.group;
         group.remove(axesGroup);
+        scene.remove(axesGroup);
         axesGroup = null;
+        worldAxesGroup = null;
         adjustPivotPoint = null;
       }
     }
@@ -775,7 +777,9 @@ async function placeAnchorFromLastHit() {
     // Xóa trục cũ nếu có
     if (axesGroup) {
       group.remove(axesGroup);
+      scene.remove(worldAxesGroup);
       axesGroup = null;
+      worldAxesGroup = null;
       adjustPivotPoint = null;
     }
    // Nếu hit không tồn tại thì lấy theo gốc anchor
@@ -813,9 +817,25 @@ async function placeAnchorFromLastHit() {
       axisGroup.add(cone);
       return axisGroup;
     }
+    function createTextLabel(text, color = "#fff") {
+      const canvas = document.createElement("canvas");
+      const ctx = canvas.getContext("2d");
+      ctx.font = "48px Arial";
+      ctx.fillStyle = color;
+      ctx.fillText(text, 10, 50);
+    
+      const texture = new THREE.CanvasTexture(canvas);
+      const spriteMaterial = new THREE.SpriteMaterial({ map: texture, transparent: true });
+      const sprite = new THREE.Sprite(spriteMaterial);
+      sprite.scale.set(0.2, 0.1, 1); // chỉnh kích thước nhãn
+      return sprite;
+    }
     const axisLen = 1;
     const axisX = createAxis(axisLen, 0xff0000);
     axisX.rotation.z = -Math.PI/2; // quay thân X sang ngang
+    const labelX = createTextLabel("X", "red");
+    labelX.position.set(1.1, 0, 0); // đặt xa đầu trục X
+    axisX.add(labelX);
     axesGroup.add(axisX);
     const axisY = createAxis(axisLen, 0x00ff00);
     axesGroup.add(axisY);
