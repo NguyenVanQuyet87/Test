@@ -827,7 +827,7 @@ async function placeAnchorFromLastHit() {
       const texture = new THREE.CanvasTexture(canvas);
       const spriteMaterial = new THREE.SpriteMaterial({ map: texture, transparent: true });
       const sprite = new THREE.Sprite(spriteMaterial);
-      sprite.scale.set(0.2, 0.1, 1); // chỉnh kích thước nhãn
+      sprite.scale.set(1, 1, 1); // chỉnh kích thước nhãn
       return sprite;
     }
     const axisLen = 1;
