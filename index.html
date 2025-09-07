@@ -820,7 +820,7 @@ async function placeAnchorFromLastHit() {
     function createTextLabel(text, color = "#fff") {
       const canvas = document.createElement("canvas");
       const ctx = canvas.getContext("2d");
-      ctx.font = "18px Arial";
+      ctx.font = "24px Arial";
       ctx.fillStyle = color;
       ctx.fillText(text, 10, 50);
     
@@ -835,7 +835,7 @@ async function placeAnchorFromLastHit() {
     axisX.rotation.z = -Math.PI/2; // quay thân X sang ngang
     const labelX = createTextLabel("X", "red");
     labelX.position.set(0, 0, 1.1); // đặt xa đầu trục X
-    axisX.add(labelX);
+    axesGroup.add(labelX);
     axesGroup.add(axisX);
     const axisY = createAxis(axisLen, 0x00ff00);
     axesGroup.add(axisY);
