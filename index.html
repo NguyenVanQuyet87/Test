@@ -827,14 +827,14 @@ async function placeAnchorFromLastHit() {
       const texture = new THREE.CanvasTexture(canvas);
       const spriteMaterial = new THREE.SpriteMaterial({ map: texture, transparent: true });
       const sprite = new THREE.Sprite(spriteMaterial);
-      sprite.scale.set(0.5, 0.5, 0.5); // chỉnh kích thước nhãn
+      sprite.scale.set(0.2, 0.25, 1); // chỉnh kích thước nhãn
       return sprite;
     }
     const axisLen = 1;
     const axisX = createAxis(axisLen, 0xff0000);
     axisX.rotation.z = -Math.PI/2; // quay thân X sang ngang
     const labelX = createTextLabel("X", "red");
-    labelX.position.set(0, 0, 1); // đặt xa đầu trục X
+    labelX.position.set(1, 0, 0); // đặt xa đầu trục X
     axesGroup.add(labelX);
     axesGroup.add(axisX);
     const axisY = createAxis(axisLen, 0x00ff00);
