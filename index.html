@@ -820,14 +820,14 @@ async function placeAnchorFromLastHit() {
     function createTextLabel(text, color = "#fff") {
       const canvas = document.createElement("canvas");
       const ctx = canvas.getContext("2d");
-      ctx.font = "48px Arial";
+      ctx.font = "24px Arial";
       ctx.fillStyle = color;
-      ctx.fillText(text, 10, 50);
+      ctx.fillText(text, 10, 10);
     
       const texture = new THREE.CanvasTexture(canvas);
       const spriteMaterial = new THREE.SpriteMaterial({ map: texture, transparent: true });
       const sprite = new THREE.Sprite(spriteMaterial);
-      sprite.scale.set(0.2, 0.25, 1); // chỉnh kích thước nhãn
+      sprite.scale.set(1, 1, 1); // chỉnh kích thước nhãn
       return sprite;
     }
     const axisLen = 1;
