@@ -837,6 +837,7 @@ async function placeAnchorFromLastHit() {
     group.worldToLocal(localPos);
     axesGroup.position.copy(localPos);
     worldAxesGroup.position.copy(hit.point);
+    worldAxesGroup.quaternion.copy(group.quaternion);
     //Lưu adjustPivotPoint
     adjustPivotPoint = hit.point.clone();
     group.add(axesGroup);
