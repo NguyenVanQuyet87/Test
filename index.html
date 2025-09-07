@@ -1027,12 +1027,26 @@ function onSelect(event) {
        rotationZSlider.style.display = 'none';
     });
   });
-
+    
+let lastAnchorUpdate = 0;
+const anchorUpdateInterval = 200; // ms, tức ~5 lần/giây
+    
   renderer.setAnimationLoop((t,frame)=>{
     if (frame) {
       const refSpace = renderer.xr.getReferenceSpace();
       let targetPoint = null;
-
+   if (currentAnchor && currentAnchor.anchor) {
+      if (t - lastAnchorUpdate > anchorUpdateInterval) {
+        const anchorPose = frame.getPose(currentAnchor.anchor.anchorSpace, refSpace);
+        if (anchorPose) {
+          const placementMatrix = computePlacementMatrixFromMatrix(
+            new THREE.Matrix4().fromArray(anchorPose.transform.matrix)
+          );
+          currentAnchor.group.matrix.copy(placementMatrix);
+        }
+        lastAnchorUpdate = t;
+      }
+    }
       // 1. KIỂM TRA VÀ LẤY DEPTH DATA
       try {
           if (frame.getDepthInformation) {
