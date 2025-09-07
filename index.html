@@ -260,14 +260,14 @@
   const markerStatusEl = document.getElementById("markerStatus");
   const resetBtn = document.getElementById("resetBtn");
   const placementBtn = document.getElementById("placementBtn");
-    const selectBtn = document.getElementById("selectBtn");
+  const selectBtn = document.getElementById("selectBtn");
   const adjustBtn = document.getElementById("adjustBtn");
   const markerOverlay = document.getElementById("markerOverlay");
   const qrFrame = document.querySelector('.qr-frame');
   const heightSlider = document.getElementById("heightSlider");
   const rotationXSlider = document.getElementById("rotationXSlider");
-const rotationYSlider = document.getElementById("rotationYSlider");
-    const rotationZSlider = document.getElementById("rotationZSlider");
+  const rotationYSlider = document.getElementById("rotationYSlider");
+  const rotationZSlider = document.getElementById("rotationZSlider");
   let modelTemplate = null;
   let currentAnchor = null;
   let reticle;
@@ -283,6 +283,7 @@ const rotationYSlider = document.getElementById("rotationYSlider");
   const allAnchors = new Set();
   let adjustMode = false;
   let axesGroup = null;
+  let worldAxesGroup = null;
   let lastHeightValue = 0;
   let lastRotationValue = 0;
 
@@ -793,6 +794,8 @@ async function placeAnchorFromLastHit() {
     // Nếu hit tồn tại thì lấy theo hit
     // Tạo group mới cho trục
     axesGroup = new THREE.Group();
+    worldAxesGroup = new THREE.Group();
+    
     function createAxis(length, color) {
       const axisGroup = new THREE.Group();
       // Thân trụ
@@ -815,19 +818,29 @@ async function placeAnchorFromLastHit() {
     axisX.rotation.z = -Math.PI/2; // quay thân X sang ngang
     axesGroup.add(axisX);
     const axisY = createAxis(axisLen, 0x00ff00);
-    // mặc định dựng đứng theo Y
-    //axisY.rotation.z = Math.PI;
     axesGroup.add(axisY);
     const axisZ = createAxis(axisLen, 0x0000ff);
     axisZ.rotation.x = Math.PI/2; // quay ra theo Z
     axesGroup.add(axisZ);
+    // Tạo hệ trục world gắn với Pivot
+    const worldAxisX = createAxis(axisLen, 0xff0000);
+    worldAxisX.rotation.z = -Math.PI/2; // quay thân X sang ngang
+    worldAxesGroup.add(worldAxisX);
+    const worldAxisY = createAxis(axisLen, 0x00ff00);
+    worldAxesGroup.add(worldAxisY);
+    const worldAxisZ = createAxis(axisLen, 0x0000ff);
+    worldAxisZ.rotation.x = Math.PI/2; // quay ra theo Z
+    worldAxesGroup.add(worldAxisZ);
+    
     // Nếu muốn dính vào anchor group
     const localPos = hit.point.clone();
     group.worldToLocal(localPos);
     axesGroup.position.copy(localPos);
+    worldAxesGroup.position.copy(hit.point);
     //Lưu adjustPivotPoint
     adjustPivotPoint = hit.point.clone();
     group.add(axesGroup);
+    scene.add(worldAxesGroup);
     infoEl.textContent = "Đã vào chế độ Adjust. Hệ trục được tạo tại vị trí hit.";
   }
   // Tạo vòng tròn focus ở giữa màn hình (chỉ để người dùng thấy)
