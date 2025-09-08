@@ -259,7 +259,7 @@
   <button id="adjustBtn" type="button">Adjust</button>
   <button id="selectBtn" type="button">Select</button>
    <button id="localBtn" type="button">Local</button>
-   <button id="wolrdBtn" type="button">World</button>
+   <button id="worldBtn" type="button">World</button>
   <input type="range" id="opacityControl" min="0" max="1" step="0.05" value="1">
   <div id="hud"></div>
   
@@ -292,6 +292,8 @@
   const placementBtn = document.getElementById("placementBtn");
   const selectBtn = document.getElementById("selectBtn");
   const adjustBtn = document.getElementById("adjustBtn");
+  const localBtn = document.getElementById("localBtn");
+  const worldBtn = document.getElementById("worldBtn");
   const markerOverlay = document.getElementById("markerOverlay");
   const qrFrame = document.querySelector('.qr-frame');
   const heightSlider = document.getElementById("heightSlider");
@@ -734,6 +736,14 @@ async function placeAnchorFromLastHit() {
         infoEl.textContent = `Chọn: ${obj.name}`;
       }
   });
+  localBtn.addEventListener("click", (e)=>{
+    islocalAxes = true;
+    infoEl.textContent = "hệ trục local.";
+  });
+  worldBtn.addEventListener("click", (e)=>{
+    islocalAxes = false;
+    infoEl.textContent = "hệ trục world.";
+  });  
   document.getElementById("opacityControl").addEventListener("input",(e)=>{
     const v = parseFloat(e.target.value);
     if (currentModel) {
