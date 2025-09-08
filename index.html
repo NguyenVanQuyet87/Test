@@ -649,6 +649,8 @@ function computePlacementMatrixFromMatrix(baseMatrix) {
 
   return basis;
 }
+let initialWorldMatrix = null;
+let initialGroupMatrix = null;
 async function placeAnchorFromLastHit() {
   if (isPlacing) return;
   const hit = lastHitResult;
@@ -680,10 +682,25 @@ async function placeAnchorFromLastHit() {
   group.add(placed);
   currentModel = placed;
   currentAnchor = { anchor, group };
-  
   if (anchor) {
     allAnchors.add(anchor);
   };
+  // Lưu matrix world ban đầu
+  initialGroupMatrix = group.matrixWorld.clone();
+  // Tạo hệ trục từ matrix ban đầu
+  initialWorldMatrix = new THREE.Matrix4().copy(initialGroupMatrix);
+  
+  // Chỉ giữ rotation, reset position về (0,0,0) nếu cần
+  const position = new THREE.Vector3();
+  const quaternion = new THREE.Quaternion();
+  const scale = new THREE.Vector3();
+  
+  initialGroupMatrix.decompose(position, quaternion, scale);
+  initialWorldMatrix = new THREE.Matrix4().compose(
+      new THREE.Vector3(0, 0, 0), // Position = 0
+      quaternion,                 // Giữ nguyên rotation
+      new THREE.Vector3(1, 1, 1)  // Scale = 1
+  );
   
   infoEl.textContent = "Mô hình đã được đặt và neo thành công!";
   isPlacing = true;
@@ -1115,7 +1132,6 @@ function getDepthValue(u, v, depthInfo) {
   // Xử lý sự kiện click/tap
 function onSelect(event) {
     if (!depthData) return;
-    
     // Lấy tọa độ màn hình
     const x = event.clientX || event.touches[0].clientX;
     const y = event.clientY || event.touches[0].clientY;
@@ -1123,9 +1139,7 @@ function onSelect(event) {
     // Lấy hit point sử dụng Depth API
     const hitPoint = getHitPointWithDepthAPI(x, y);
     infoEl.textContent = "Hit point trên vật thật:";
-
 }
-    
   // Sự kiện bắt đầu vào chế độ AR  
   renderer.xr.addEventListener("sessionstart", async ()=>{
     const session = renderer.xr.getSession();
@@ -1140,7 +1154,6 @@ function onSelect(event) {
       markerStatusEl.textContent = "Chưa phát hiện marker";
       markerDetected = false;
       hideQRFrame();
-      
       adjustMode = false;
       heightSlider.style.display = 'none';
       rotationXSlider.style.display = 'none';
@@ -1192,8 +1205,6 @@ function onSelect(event) {
         if (intersects.length > 0) {
           targetPoint = intersects[0].point.clone();
         }
-      
-      
       // Hàm xác định khoảng cách, độ cao, độ sâu
       function getDistance(targetPoint, camera, currentAnchor) {
         if (!targetPoint) return null;
@@ -1315,6 +1326,9 @@ function rotateAroundLocalAxis(localAxis, angleRad) {
       // Lấy matrix hiện tại
       const currentMatrix = group.matrix.clone();
       // Hãy transform trục về local space của group
+      // Chuyển trục local về trục world
+      // Lấy ma trận quay của group quanh hệ trục world, ma trận này không chứa phần dịch chuyển
+      // Áp dụng ma trận này cho trục local, khi đó trục local sẽ chuyển sang world
       const rotation = new THREE.Matrix4().extractRotation(currentMatrix);
       const worldAxis = localAxis.clone().applyMatrix4(rotation).normalize(); // Chuyển sang world
       // Tạo các ma trận transformation theo phương pháp TRT:
@@ -1347,14 +1361,12 @@ function rotateAroundLocalAxis(localAxis, angleRad) {
       group.matrixWorldNeedsUpdate = true;
     }
 }
-function rotateAroundWorldAxis(worldAxis, angleRad) {
+function rotateAroundWorldAxis(staticLocalAxis, angleRad) {
     if (!currentAnchor || !currentAnchor.group) return;
     const group = currentAnchor.group;
     if (adjustPivotPoint) {
       // Cập nhật matrixWorld để đảm bảo dữ liệu chính xác
-      group.updateMatrixWorld(true);
-      // Lấy matrix hiện tại
-      const currentMatrix = group.matrix.clone();
+      const worldAxis = staticLocalAxis.clone().applyMatrix4(initialWorldMatrix).normalize(); // Chuyển sang world
       // Tạo các ma trận transformation theo phương pháp TRT:
       // T2 * R * T1 * currentMatrix
       // T1: Dịch về pivot (pivot thành gốc tọa độ)
