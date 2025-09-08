@@ -1369,8 +1369,8 @@ function rotateAroundWorldAxis(staticLocalAxis, angleRad) {
       const currentMatrix = group.matrix.clone();      
       // Cập nhật matrixWorld để đảm bảo dữ liệu chính xác
       //const worldAxis = staticLocalAxis.clone().applyMatrix4(initialWorldMatrix).normalize(); // Chuyển sang world
-      const rotation = new THREE.Matrix4().extractRotation(initialGroupMatrix );
-      const worldAxis = staticLocalAxis.clone().applyMatrix4(rotation).normalize(); // Chuyển sang world
+      //const rotation = new THREE.Matrix4().extractRotation(initialWorldMatrix );
+      const worldAxis = staticLocalAxis.clone().applyMatrix4(initialWorldMatrix).normalize(); // Chuyển sang world
       // Tạo các ma trận transformation theo phương pháp TRT:
       // T2 * R * T1 * currentMatrix
       // T1: Dịch về pivot (pivot thành gốc tọa độ)
