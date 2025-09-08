@@ -737,11 +737,11 @@ async function placeAnchorFromLastHit() {
       }
   });
   localBtn.addEventListener("click", (e)=>{
-    islocalAxes = true;
+    isLocalAxes = true;
     infoEl.textContent = "hệ trục local.";
   });
   worldBtn.addEventListener("click", (e)=>{
-    islocalAxes = false;
+    isLocalAxes = false;
     infoEl.textContent = "hệ trục world.";
   });  
   document.getElementById("opacityControl").addEventListener("input",(e)=>{
