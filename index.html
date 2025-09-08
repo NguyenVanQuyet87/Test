@@ -1365,6 +1365,8 @@ function rotateAroundWorldAxis(staticLocalAxis, angleRad) {
     if (!currentAnchor || !currentAnchor.group) return;
     const group = currentAnchor.group;
     if (adjustPivotPoint) {
+      // Lấy matrix hiện tại
+      const currentMatrix = group.matrix.clone();      
       // Cập nhật matrixWorld để đảm bảo dữ liệu chính xác
       const worldAxis = staticLocalAxis.clone().applyMatrix4(initialWorldMatrix).normalize(); // Chuyển sang world
       // Tạo các ma trận transformation theo phương pháp TRT:
