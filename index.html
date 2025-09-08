@@ -796,19 +796,32 @@ async function placeAnchorFromLastHit() {
   rotationXSlider.addEventListener("input", (e) => {
     const value = parseFloat(e.target.value);
     const deltaDeg = value - lastRotationValue;
-    rotateAroundLocalAxis(new THREE.Vector3(1, 0, 0), THREE.MathUtils.degToRad(deltaDeg));
+    if (isLocalAxes) {
+      rotateAroundLocalAxis(new THREE.Vector3(1, 0, 0), THREE.MathUtils.degToRad(deltaDeg));
+    } else {
+      rotateAroundWorldAxis(new THREE.Vector3(1, 0, 0), THREE.MathUtils.degToRad(deltaDeg));
+    }
+    
     lastRotationValue = value;
   });
   rotationYSlider.addEventListener("input", (e) => {
     const value = parseFloat(e.target.value);
     const deltaDeg = value - lastRotationValue;
-    rotateAroundLocalAxis(new THREE.Vector3(0, 1, 0), THREE.MathUtils.degToRad(deltaDeg));
+    if (isLocalAxes) {
+      rotateAroundLocalAxis(new THREE.Vector3(0, 1, 0), THREE.MathUtils.degToRad(deltaDeg));
+    } else {
+      rotateAroundWorldAxis(new THREE.Vector3(0, 1, 0), THREE.MathUtils.degToRad(deltaDeg));
+    }
     lastRotationValue = value;
   });
     rotationZSlider.addEventListener("input", (e) => {
     const value = parseFloat(e.target.value);
     const deltaDeg = value - lastRotationValue;
-    rotateAroundLocalAxis(new THREE.Vector3(0, 0, 1), THREE.MathUtils.degToRad(deltaDeg));
+    if (isLocalAxes) {
+      rotateAroundLocalAxis(new THREE.Vector3(0, 0, 1), THREE.MathUtils.degToRad(deltaDeg));
+    } else {
+      rotateAroundWorldAxis(new THREE.Vector3(0, 0, 1), THREE.MathUtils.degToRad(deltaDeg));
+    }
     lastRotationValue = value;
   });
 
@@ -1336,6 +1349,41 @@ function rotateAroundLocalAxis(localAxis, angleRad) {
        // group.matrix.multiplyMatrices(rotationMatrix, group.matrix);
     }
     
+    // Đảm bảo cập nhật
+    group.matrixAutoUpdate = false;
+    group.matrixWorldNeedsUpdate = true;
+}
+function rotateAroundWorldAxis(worldAxis, angleRad) {
+    if (!currentAnchor || !currentAnchor.group) return;
+    const group = currentAnchor.group;
+    if (adjustPivotPoint) {
+      // Lấy matrix hiện tại
+      const currentMatrix = group.matrix.clone();
+      // Tạo các ma trận transformation theo phương pháp TRT:
+      // T2 * R * T1 * currentMatrix
+      // T1: Dịch về pivot (pivot thành gốc tọa độ)
+      const T1 = new THREE.Matrix4().makeTranslation(
+          -adjustPivotPoint.x, 
+          -adjustPivotPoint.y, 
+          -adjustPivotPoint.z
+      );
+      // R: Quay quanh trục Z tại gốc tọa độ
+      const R = new THREE.Matrix4().makeRotationAxis(worldAxis, angleRad);
+      // T2: Dịch trở lại vị trí pivot
+      const T2 = new THREE.Matrix4().makeTranslation(
+          adjustPivotPoint.x, 
+          adjustPivotPoint.y, 
+          adjustPivotPoint.z
+      );
+      // Kết hợp: T2 * R * T1 * currentMatrix
+      const newMatrix = new THREE.Matrix4()
+          .multiplyMatrices(T2, R)      // T2 * R
+          .multiply(T1)                 // * T1
+          .multiply(currentMatrix);     // * currentMatrix
+      // Cập nhật group
+      group.matrix.copy(newMatrix);
+    } 
+  
     // Đảm bảo cập nhật
     group.matrixAutoUpdate = false;
     group.matrixWorldNeedsUpdate = true;
