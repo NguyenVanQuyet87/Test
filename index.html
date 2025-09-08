@@ -763,7 +763,7 @@ async function placeAnchorFromLastHit() {
     rotateAroundLocalAxis(new THREE.Vector3(0, 1, 0), THREE.MathUtils.degToRad(deltaDeg));
     lastRotationValue = value;
   });
-      rotationZSlider.addEventListener("input", (e) => {
+    rotationZSlider.addEventListener("input", (e) => {
     const value = parseFloat(e.target.value);
     const deltaDeg = value - lastRotationValue;
     rotateAroundLocalAxis(new THREE.Vector3(0, 0, 1), THREE.MathUtils.degToRad(deltaDeg));
@@ -799,7 +799,6 @@ async function placeAnchorFromLastHit() {
     // Tạo group mới cho trục
     axesGroup = new THREE.Group();
     worldAxesGroup = new THREE.Group();
-    
     function createAxis(length, color) {
       const axisGroup = new THREE.Group();
       // Thân trụ
@@ -830,35 +829,44 @@ async function placeAnchorFromLastHit() {
       const texture = new THREE.CanvasTexture(canvas);
       const spriteMaterial = new THREE.SpriteMaterial({ map: texture, transparent: true });
       const sprite = new THREE.Sprite(spriteMaterial);
-      sprite.scale.set(0.2, 0.2, 0.2); // chỉnh kích thước nhãn
+      sprite.scale.set(0.15, 0.15, 0.15); // chỉnh kích thước nhãn
       return sprite;
     }
     const axisLen = 1;
     const axisX = createAxis(axisLen, 0xff0000);
     axisX.rotation.z = -Math.PI/2; // quay thân X sang ngang
-    const labelX = createTextLabel("X", "red");
-    labelX.position.set(0.5, 0, 0); // đặt xa đầu trục X
+    const labelX = createTextLabel("x", "red");
+    labelX.position.set(0.3, 0, 0); // đặt xa đầu trục X
     axesGroup.add(labelX);
     axesGroup.add(axisX);
     const axisY = createAxis(axisLen, 0x00ff00);
-
- const labelY = createTextLabel("Y", "green");
-    labelY.position.set(0, 0.5, 0); // đặt xa đầu trục Y
+    const labelY = createTextLabel("y", "green");
+    labelY.position.set(0, 0.3, 0); // đặt xa đầu trục Y
     axesGroup.add(labelY);   axesGroup.add(axisY);
     const axisZ = createAxis(axisLen, 0x0000ff);
     axisZ.rotation.x = Math.PI/2; // quay ra theo Z
-const labelZ = createTextLabel("Z", "blue");
-    labelZ.position.set(0, 0, 0.5); // đặt xa đầu trục Z
+    const labelZ = createTextLabel("z", "blue");
+    labelZ.position.set(0, 0, 0.3); // đặt xa đầu trục Z
     axesGroup.add(labelZ);
     axesGroup.add(axisZ);
+    
     // Tạo hệ trục world gắn với Pivot
     const worldAxisX = createAxis(axisLen, 0xff0000);
     worldAxisX.rotation.z = -Math.PI/2; // quay thân X sang ngang
+    const labelXw = createTextLabel("Xw", "red");
+    labelXw.position.set(0.3, 0, 0); // đặt xa đầu trục X
+    worldAxesGroup.add(labelXw);
     worldAxesGroup.add(worldAxisX);
     const worldAxisY = createAxis(axisLen, 0x00ff00);
+    const labelYw = createTextLabel("Yw", "green");
+    labelYw.position.set(0, 0.3, 0); // đặt xa đầu trục Y
+    worldAxesGroup.add(labelYw);
     worldAxesGroup.add(worldAxisY);
     const worldAxisZ = createAxis(axisLen, 0x0000ff);
     worldAxisZ.rotation.x = Math.PI/2; // quay ra theo Z
+    const labelZw = createTextLabel("Zw", "blue");
+    labelZw.position.set(0, 0, 0.3); // đặt xa đầu trục Z
+    worldAxesGroup.add(labelZw);
     worldAxesGroup.add(worldAxisZ);
     
     // Nếu muốn dính vào anchor group
