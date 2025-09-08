@@ -1306,9 +1306,9 @@ function rotateAroundLocalAxis(localAxis, angleRad) {
       previousTouchY=e.touches[0].clientY; 
       if (adjustMode) {
         // Dịch theo trục X (horizontal drag)
-        translateAlongLocalAxis(new THREE.Vector3(1, 0, 0), dx * 0.001); // Factor nhạy
+        translateAlongLocalAxis(new THREE.Vector3(1, 0, 0), -dy * 0.001); // Factor nhạy
         // Dịch theo trục Y (vertical drag, negate để up drag positive Y)
-        translateAlongLocalAxis(new THREE.Vector3(0, 1, 0), -dy * 0.001);
+        translateAlongLocalAxis(new THREE.Vector3(0, 1, 0), dx * 0.001);
       }
     } 
   });
