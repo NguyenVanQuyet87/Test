@@ -1340,23 +1340,19 @@ function rotateAroundLocalAxis(localAxis, angleRad) {
           .multiply(currentMatrix);     // * currentMatrix
       // Cập nhật group
       group.matrix.copy(newMatrix);
-    } else {
-        // Quay quanh gốc của group - sử dụng trục Y world
-        //const worldAxis = new THREE.Vector3(0, 0, 1);
-        //const rotationMatrix = new THREE.Matrix4().makeRotationAxis(worldAxis, angleRad);
-        
-        // R * currentMatrix
-       // group.matrix.multiplyMatrices(rotationMatrix, group.matrix);
+      // Cập nhật position/quaternion/scale để các API khác vẫn hoạt động đúng
+      group.matrix.decompose(group.position, group.quaternion, group.scale);
+      // Đảm bảo cập nhật
+      group.matrixAutoUpdate = false;
+      group.matrixWorldNeedsUpdate = true;
     }
-    
-    // Đảm bảo cập nhật
-    group.matrixAutoUpdate = false;
-    group.matrixWorldNeedsUpdate = true;
 }
 function rotateAroundWorldAxis(worldAxis, angleRad) {
     if (!currentAnchor || !currentAnchor.group) return;
     const group = currentAnchor.group;
     if (adjustPivotPoint) {
+      // Cập nhật matrixWorld để đảm bảo dữ liệu chính xác
+      group.updateMatrixWorld(true);
       // Lấy matrix hiện tại
       const currentMatrix = group.matrix.clone();
       // Tạo các ma trận transformation theo phương pháp TRT:
@@ -1382,11 +1378,12 @@ function rotateAroundWorldAxis(worldAxis, angleRad) {
           .multiply(currentMatrix);     // * currentMatrix
       // Cập nhật group
       group.matrix.copy(newMatrix);
+      // Cập nhật position/quaternion/scale để các API khác vẫn hoạt động đúng
+      group.matrix.decompose(group.position, group.quaternion, group.scale);
+      // Đảm bảo cập nhật
+      group.matrixAutoUpdate = false;
+      group.matrixWorldNeedsUpdate = true;
     } 
-  
-    // Đảm bảo cập nhật
-    group.matrixAutoUpdate = false;
-    group.matrixWorldNeedsUpdate = true;
 }
  renderer.domElement.addEventListener("touchstart",(e)=>{ 
     if (e.touches.length===1) { 
