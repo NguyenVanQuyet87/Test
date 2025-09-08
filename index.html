@@ -819,15 +819,18 @@ async function placeAnchorFromLastHit() {
     }
     function createTextLabel(text, color = "#fff") {
       const canvas = document.createElement("canvas");
+      canvas.width = 128;
+      canvas.height = 128;
       const ctx = canvas.getContext("2d");
-      ctx.font = "24px Arial";
+      ctx.font = "48px Arial";
       ctx.fillStyle = color;
-      ctx.fillText(text, 10, 10);
-    
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(text, canvas.width/2, canvas.height/2);
       const texture = new THREE.CanvasTexture(canvas);
       const spriteMaterial = new THREE.SpriteMaterial({ map: texture, transparent: true });
       const sprite = new THREE.Sprite(spriteMaterial);
-      sprite.scale.set(1, 1, 1); // chỉnh kích thước nhãn
+      sprite.scale.set(0.2, 0.2, 0.2); // chỉnh kích thước nhãn
       return sprite;
     }
     const axisLen = 1;
