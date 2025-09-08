@@ -98,6 +98,34 @@
       border-radius: 6px;
       cursor: pointer;
     }
+    #localBtn {
+      position: absolute;
+      bottom: 350px;
+      right: 10px;
+      z-index: 10;
+      background: rgba(255,255,255,0.9);
+      color: #111;
+      padding: 8px 12px;
+      font-family: system-ui, sans-serif;
+      font-size: 13px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    #worldBtn {
+      position: absolute;
+      bottom: 400px;
+      right: 10px;
+      z-index: 10;
+      background: rgba(255,255,255,0.9);
+      color: #111;
+      padding: 8px 12px;
+      font-family: system-ui, sans-serif;
+      font-size: 13px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      cursor: pointer;
+    }
     #heightSlider {
       display: none;
       position: absolute;
@@ -230,6 +258,8 @@
   <button id="placementBtn" type="button">Placement</button>
   <button id="adjustBtn" type="button">Adjust</button>
   <button id="selectBtn" type="button">Select</button>
+   <button id="localBtn" type="button">Local</button>
+   <button id="wolrdBtn" type="button">World</button>
   <input type="range" id="opacityControl" min="0" max="1" step="0.05" value="1">
   <div id="hud"></div>
   
@@ -284,6 +314,7 @@
   let adjustMode = false;
   let axesGroup = null;
   let worldAxesGroup = null;
+  let isLocalAxes = false;
   let lastHeightValue = 0;
   let lastRotationValue = 0;
 
@@ -734,10 +765,11 @@ async function placeAnchorFromLastHit() {
     } else {
       // Xóa hệ trục khi tắt chế độ Adjust
       if (axesGroup) {
-        const group = currentAnchor.group;
         group.remove(axesGroup);
-        scene.remove(worldAxesGroup);
         axesGroup = null;
+        adjustPivotPoint = null;
+      } else if (worldAxesGroup) {
+        scene.remove(worldAxesGroup);
         worldAxesGroup = null;
         adjustPivotPoint = null;
       }
@@ -777,8 +809,10 @@ async function placeAnchorFromLastHit() {
     // Xóa trục cũ nếu có
     if (axesGroup) {
       group.remove(axesGroup);
-      scene.remove(worldAxesGroup);
       axesGroup = null;
+      adjustPivotPoint = null;
+    } else if (worldAxesGroup) {
+      scene.remove(worldAxesGroup);
       worldAxesGroup = null;
       adjustPivotPoint = null;
     }
@@ -796,9 +830,7 @@ async function placeAnchorFromLastHit() {
     }
     if (!hit) return;
     // Nếu hit tồn tại thì lấy theo hit
-    // Tạo group mới cho trục
-    axesGroup = new THREE.Group();
-    worldAxesGroup = new THREE.Group();
+
     function createAxis(length, color) {
       const axisGroup = new THREE.Group();
       // Thân trụ
@@ -832,67 +864,74 @@ async function placeAnchorFromLastHit() {
       sprite.scale.set(0.15, 0.15, 0.15); // chỉnh kích thước nhãn
       return sprite;
     }
-    const axisLen = 1;
-    const axisX = createAxis(axisLen, 0xff0000);
-    axisX.rotation.z = -Math.PI/2; // quay thân X sang ngang
-    const labelX = createTextLabel("x", "red");
-    labelX.position.set(0.3, 0, 0); // đặt xa đầu trục X
-    axesGroup.add(labelX);
-    axesGroup.add(axisX);
-    const axisY = createAxis(axisLen, 0x00ff00);
-    const labelY = createTextLabel("y", "green");
-    labelY.position.set(0, 0.3, 0); // đặt xa đầu trục Y
-    axesGroup.add(labelY);   axesGroup.add(axisY);
-    const axisZ = createAxis(axisLen, 0x0000ff);
-    axisZ.rotation.x = Math.PI/2; // quay ra theo Z
-    const labelZ = createTextLabel("z", "blue");
-    labelZ.position.set(0, 0, 0.3); // đặt xa đầu trục Z
-    axesGroup.add(labelZ);
-    axesGroup.add(axisZ);
-    
-    // Tạo hệ trục world gắn với Pivot
-    const worldAxisX = createAxis(axisLen, 0xff0000);
-    worldAxisX.rotation.z = -Math.PI/2; // quay thân X sang ngang
-    const labelXw = createTextLabel("Xw", "red");
-    labelXw.position.set(0.3, 0, 0); // đặt xa đầu trục X
-    worldAxesGroup.add(labelXw);
-    worldAxesGroup.add(worldAxisX);
-    const worldAxisY = createAxis(axisLen, 0x00ff00);
-    const labelYw = createTextLabel("Yw", "green");
-    labelYw.position.set(0, 0.3, 0); // đặt xa đầu trục Y
-    worldAxesGroup.add(labelYw);
-    worldAxesGroup.add(worldAxisY);
-    const worldAxisZ = createAxis(axisLen, 0x0000ff);
-    worldAxisZ.rotation.x = Math.PI/2; // quay ra theo Z
-    const labelZw = createTextLabel("Zw", "blue");
-    labelZw.position.set(0, 0, 0.3); // đặt xa đầu trục Z
-    worldAxesGroup.add(labelZw);
-    worldAxesGroup.add(worldAxisZ);
-    
-    // Nếu muốn dính vào anchor group
-    const localPos = hit.point.clone();
-    group.worldToLocal(localPos);
-    axesGroup.position.copy(localPos);
-    // Lấy pose của group
-    // group thiết lập matrixAutoUpdate = false
-    // group được gán thay đổi bởi hàm matrix nên các giá trị positon, quaternion không tự động cập nhật
-    // phải lấy thuộc tính ngược lại
-    const matrixWorld = group.matrixWorld.clone(); // hoặc group.matrix nếu chỉ mới set
-    const position = new THREE.Vector3();
-    const quaternion = new THREE.Quaternion();
-    const scale = new THREE.Vector3();
-    matrixWorld.decompose(position, quaternion, scale);
-    worldAxesGroup.position.copy(hit.point);
-    worldAxesGroup.quaternion.copy(quaternion);
+    if (isLocalAxes) {
+      // Tạo group mới cho trục
+      axesGroup = new THREE.Group();
+      const axisLen = 1;
+      const axisX = createAxis(axisLen, 0xff0000);
+      axisX.rotation.z = -Math.PI/2; // quay thân X sang ngang
+      const labelX = createTextLabel("x", "red");
+      labelX.position.set(0.3, 0, 0); // đặt xa đầu trục X
+      axesGroup.add(labelX);
+      axesGroup.add(axisX);
+      const axisY = createAxis(axisLen, 0x00ff00);
+      const labelY = createTextLabel("y", "green");
+      labelY.position.set(0, 0.3, 0); // đặt xa đầu trục Y
+      axesGroup.add(labelY);   axesGroup.add(axisY);
+      const axisZ = createAxis(axisLen, 0x0000ff);
+      axisZ.rotation.x = Math.PI/2; // quay ra theo Z
+      const labelZ = createTextLabel("z", "blue");
+      labelZ.position.set(0, 0, 0.3); // đặt xa đầu trục Z
+      axesGroup.add(labelZ);
+      axesGroup.add(axisZ);
+
+      // Nếu muốn dính vào anchor group
+      const localPos = hit.point.clone();
+      group.worldToLocal(localPos);
+      axesGroup.position.copy(localPos);
+      group.add(axesGroup);
+    } else {
+      // Tạo group mới cho trục
+      worldAxesGroup = new THREE.Group();
+      const axisLen = 1;
+      // Tạo hệ trục world gắn với Pivot
+      const worldAxisX = createAxis(axisLen, 0xff0000);
+      worldAxisX.rotation.z = -Math.PI/2; // quay thân X sang ngang
+      const labelXw = createTextLabel("Xw", "red");
+      labelXw.position.set(0.3, 0, 0); // đặt xa đầu trục X
+      worldAxesGroup.add(labelXw);
+      worldAxesGroup.add(worldAxisX);
+      const worldAxisY = createAxis(axisLen, 0x00ff00);
+      const labelYw = createTextLabel("Yw", "green");
+      labelYw.position.set(0, 0.3, 0); // đặt xa đầu trục Y
+      worldAxesGroup.add(labelYw);
+      worldAxesGroup.add(worldAxisY);
+      const worldAxisZ = createAxis(axisLen, 0x0000ff);
+      worldAxisZ.rotation.x = Math.PI/2; // quay ra theo Z
+      const labelZw = createTextLabel("Zw", "blue");
+      labelZw.position.set(0, 0, 0.3); // đặt xa đầu trục Z
+      worldAxesGroup.add(labelZw);
+      worldAxesGroup.add(worldAxisZ);
+      // Lấy pose của group
+      // group thiết lập matrixAutoUpdate = false
+      // group được gán thay đổi bởi hàm matrix nên các giá trị positon, quaternion không tự động cập nhật
+      // phải lấy thuộc tính ngược lại
+      const matrixWorld = group.matrixWorld.clone(); // hoặc group.matrix nếu chỉ mới set
+      const position = new THREE.Vector3();
+      const quaternion = new THREE.Quaternion();
+      const scale = new THREE.Vector3();
+      matrixWorld.decompose(position, quaternion, scale);
+      worldAxesGroup.position.copy(hit.point);
+      worldAxesGroup.quaternion.copy(quaternion);
+      scene.add(worldAxesGroup);
+    }
     //Lưu adjustPivotPoint
     adjustPivotPoint = hit.point.clone();
-    group.add(axesGroup);
-    scene.add(worldAxesGroup);
     infoEl.textContent = "Đã vào chế độ Adjust. Hệ trục được tạo tại vị trí hit.";
   }
   // Tạo vòng tròn focus ở giữa màn hình (chỉ để người dùng thấy)
   const focusRing = document.createElement("div");
-   const focusPoint = document.createElement("div"); 
+  const focusPoint = document.createElement("div"); 
   focusRing.style.position = "absolute";
   focusRing.style.top = "50%";
   focusRing.style.left = "50%";
