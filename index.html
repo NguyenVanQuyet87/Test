@@ -940,14 +940,11 @@ async function placeAnchorFromLastHit() {
       // Lấy pose của group
       // group thiết lập matrixAutoUpdate = false
       // group được gán thay đổi bởi hàm matrix nên các giá trị positon, quaternion không tự động cập nhật
-      // phải lấy thuộc tính ngược lại
-      const matrixWorld = group.matrixWorld.clone(); // hoặc group.matrix nếu chỉ mới set
       const position = new THREE.Vector3();
       const quaternion = new THREE.Quaternion();
       const scale = new THREE.Vector3();
-      matrixWorld.decompose(position, quaternion, scale);
-      worldAxesGroup.position.copy(hit.point);
-      worldAxesGroup.quaternion.copy(quaternion);
+      initialGroupMatrix.decompose(position, quaternion, scale);
+     worldAxesGroup.position.copy(hit.point);           worldAxesGroup.quaternion.copy(quaternion);
       scene.add(worldAxesGroup);
     }
     //Lưu adjustPivotPoint
