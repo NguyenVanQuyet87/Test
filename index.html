@@ -740,6 +740,7 @@ async function placeAnchorFromLastHit() {
   });
   localBtn.addEventListener("click", (e)=>{
     isLocalAxes = true;
+    
     infoEl.textContent = "hệ trục local.";
   });
   worldBtn.addEventListener("click", (e)=>{
@@ -776,15 +777,12 @@ async function placeAnchorFromLastHit() {
       createAxesAtHit(hit);
     } else {
       // Xóa hệ trục khi tắt chế độ Adjust
-      if (axesGroup) {
         group.remove(axesGroup);
         axesGroup = null;
-        adjustPivotPoint = null;
-      } else if (worldAxesGroup) {
         scene.remove(worldAxesGroup);
         worldAxesGroup = null;
         adjustPivotPoint = null;
-      }
+      
     }
   });
 
@@ -889,7 +887,7 @@ async function placeAnchorFromLastHit() {
       sprite.scale.set(0.15, 0.15, 0.15); // chỉnh kích thước nhãn
       return sprite;
     }
-    if (isLocalAxes) {
+    
       // Tạo group mới cho trục
       axesGroup = new THREE.Group();
       const axisLen = 1;
@@ -915,7 +913,7 @@ async function placeAnchorFromLastHit() {
       group.worldToLocal(localPos);
       axesGroup.position.copy(localPos);
       group.add(axesGroup);
-    } else {
+    
       // Tạo group mới cho trục
       worldAxesGroup = new THREE.Group();
       const axisLen = 1;
@@ -946,7 +944,7 @@ async function placeAnchorFromLastHit() {
       initialGroupMatrix.decompose(position, quaternion, scale);
      worldAxesGroup.position.copy(hit.point);           worldAxesGroup.quaternion.copy(quaternion);
       scene.add(worldAxesGroup);
-    }
+    
     //Lưu adjustPivotPoint
     adjustPivotPoint = hit.point.clone();
     infoEl.textContent = "Đã vào chế độ Adjust. Hệ trục được tạo tại vị trí hit.";
