@@ -323,14 +323,14 @@ let initialWorldMatrix = null;
 let initialGroupMatrix = null;
 
   const scene = new THREE.Scene();
-  //const camera = new THREE.PerspectiveCamera(70, window.innerWidth/window.innerHeight, 0.01, 20);
-  const aspect = window.innerWidth / window.innerHeight;
-  const d = 2; // zoom size, bạn điều chỉnh cho vừa
-  const camera = new THREE.OrthographicCamera(
-    -d * aspect, d * aspect, d, -d, 0.1, 100
-  );
-  camera.position.set(5, 5, 5);
-  camera.lookAt(0, 0, 0);
+  const camera = new THREE.PerspectiveCamera(70, window.innerWidth/window.innerHeight, 0.01, 20);
+  //const aspect = window.innerWidth / window.innerHeight;
+  //const d = 2; // zoom size, bạn điều chỉnh cho vừa
+  //const camera = new THREE.OrthographicCamera(
+    //-d * aspect, d * aspect, d, -d, 0.1, 100
+  //);
+  //camera.position.set(5, 5, 5);
+  //camera.lookAt(0, 0, 0);
     
   const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, precision: "highp" });
   renderer.setSize(window.innerWidth, window.innerHeight);
