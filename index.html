@@ -925,7 +925,6 @@ async function placeAnchorFromLastHit() {
     
       // Tạo group mới cho trục
       worldAxesGroup = new THREE.Group();
-      const axisLen = 1;
       // Tạo hệ trục world gắn với Pivot
       const worldAxisX = createAxis(axisLen, 0xff0000);
       worldAxisX.rotation.z = -Math.PI/2; // quay thân X sang ngang
