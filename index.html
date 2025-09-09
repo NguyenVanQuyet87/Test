@@ -740,11 +740,14 @@ async function placeAnchorFromLastHit() {
   });
   localBtn.addEventListener("click", (e)=>{
     isLocalAxes = true;
-    
+    axesGroup.visible = true;
+    worldAxesGroup.visible = false;
     infoEl.textContent = "hệ trục local.";
   });
   worldBtn.addEventListener("click", (e)=>{
     isLocalAxes = false;
+    axesGroup.visible = false;
+    worldAxesGroup.visible = true;
     infoEl.textContent = "hệ trục world.";
   });  
   document.getElementById("opacityControl").addEventListener("input",(e)=>{
@@ -775,6 +778,13 @@ async function placeAnchorFromLastHit() {
       lastRotationValue = 0;
       const hit = getIntersects();
       createAxesAtHit(hit);
+      if (isLocalAxes) {
+        axesGroup.visible = true;
+        worldAxesGroup.visible = false;
+      } else {
+        axesGroup.visible = false;
+        worldAxesGroup.visible = true;
+      }
     } else {
       // Xóa hệ trục khi tắt chế độ Adjust
         group.remove(axesGroup);
@@ -782,7 +792,6 @@ async function placeAnchorFromLastHit() {
         scene.remove(worldAxesGroup);
         worldAxesGroup = null;
         adjustPivotPoint = null;
-      
     }
   });
 
