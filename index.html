@@ -765,6 +765,7 @@ async function placeAnchorFromLastHit() {
 
   adjustBtn.addEventListener("click", () => {
     adjustMode = !adjustMode;
+    
     heightSlider.style.display = adjustMode ? 'block' : 'none';
     rotationXSlider.style.display = adjustMode ? 'block' : 'none';
     rotationYSlider.style.display = adjustMode ? 'block' : 'none';
@@ -787,6 +788,7 @@ async function placeAnchorFromLastHit() {
       }
     } else {
       // Xóa hệ trục khi tắt chế độ Adjust
+        const group = currentAnchor.group;
         group.remove(axesGroup);
         axesGroup = null;
         scene.remove(worldAxesGroup);
